@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>جيم — الكهف</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">الكَهْف</div>
+    <div class="theme-switcher"><button class="theme-toggle" onclick="toggleTheme()">🎨 تغيير الثيم</button></div>
+    <nav class="nav">
+      <a href="index.html"><div class="ico">🏠</div><span>الرئيسية</span></a>
+      <a href="playstation.html"><div class="ico">🎮</div><span>بلايستيشن</span></a>
+      <a href="billiard-snooker.html"><div class="ico">🎱</div><span>بلياردو / سنوكر</span></a>
+      <a href="tennis.html"><div class="ico">🎾</div><span>تنس</span></a>
+      <a href="products.html"><div class="ico">🛒</div><span>المنتجات</span></a>
+      <a href="admin.html"><div class="ico">🔑</div><span>الإدارة</span></a>
+    </nav>
+  </div>
+
+  <div class="content">
+    <div class="header"><div class="h-title">الجيم</div></div>
+    <div id="gym-rooms" class="grid"></div>
+  </div>
+
+  <audio id="alarmSound" src="alarm.mp3" preload="auto"></audio>
+  <script src="script.js"></script>
+</body>
+</html>
