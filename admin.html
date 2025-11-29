@@ -1,60 +1,42 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>لوحة الإدارة — الكهف</title>
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<nav class="navbar">
-  <ul>
-    <li><a href="index.html">🏠 الرئيسية</a>
-    <li><a href="playstation.html">🎮 بلايستيشن</a>
-    <li><a href="billiard-snooker.html">🎱 بلياردو / سنوكر</a>
-    <li><a href="tennis.html">🎾 تنس</a>
-    <li><a href="products.html">🛒 المنتجات</a>
-    <li><a class="active" href="admin.html">⚙️ الإدارة</a>
-  </ul>
-</nav>
+=<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>لوحة الإدارة — الكهف</title><link rel="stylesheet" href="style.css"></head><body>
+  <nav class="navbar"><ul><li><a href="index.html">🏠 الرئيسية</a></li><li><a href="playstation.html">🎮 بلايستيشن</a></li><li><a href="billiard-snooker.html">🎱 بلياردو</a></li><li><a href="tennis.html">🎾 تنس</a></li><li><a href="products.html">🛒 المنتجات</a></li><li><a class="active" href="admin.html">⚙ الإدارة</a></li></ul></nav>
 
-<div class="page-container">
-  <div class="h-title">لوحة الإدارة</div>
-  <div class="muted">غيّر الأسعار، أضف/احذف غرف ومنتجات، واطلع تقارير سريعة.</div>
+  <div class="page-container">
+    <div class="h-title">لوحة الإدارة</div>
+    <div class="muted">غيّر الأسعار، أضف/احذف غرف ومنتجات، واطلع تقارير سريعة.</div>
 
-  <div class="card" style="margin-top:12px">
-    <h3>الأسعار (ج/ساعة)</h3>
-    <div class="form-row">
-      <input id="price-ps5" class="input" placeholder="PS5 (ج/ساعة)">
-      <input id="price-ps4" class="input" placeholder="PS4 (ج/ساعة)">
-      <input id="price-b" class="input" placeholder="Billiard (ج/ساعة)">
-      <input id="price-t" class="input" placeholder="Tennis (ج/ساعة)">
-      <button class="btn btn-primary" onclick="savePrices()">حفظ الأسعار</button>
+    <div class="card" style="margin-top:12px">
+      <h3>الأسعار (ج/ساعة أو سعر المباراة)</h3>
+      <div class="form-row">
+        <input id="price-ps5" class="input" placeholder="PS5 ساعة" type="number">
+        <input id="price-ps5m" class="input" placeholder="PS5 مباراة" type="number">
+        <input id="price-ps4" class="input" placeholder="PS4 ساعة" type="number">
+        <input id="price-ps4m" class="input" placeholder="PS4 مباراة" type="number">
+        <input id="price-b" class="input" placeholder="Billiard pool" type="number">
+        <input id="price-s" class="input" placeholder="Billiard snooker" type="number">
+        <input id="price-t1" class="input" placeholder="Tennis فردي" type="number">
+        <input id="price-t2" class="input" placeholder="Tennis زوجي" type="number">
+        <button class="btn btn-primary" onclick="savePricesFromForm()">حفظ الأسعار</button>
+      </div>
     </div>
-  </div>
 
-  <div class="card" style="margin-top:12px">
-    <h3>أضف غرفة جديدة</h3>
-    <div class="form-row">
-      <input id="room-name" class="input" placeholder="Room name (English)">
-      <select id="room-type" class="input">
-        <option value="ps5">PS5</option>
-        <option value="ps4">PS4</option>
-        <option value="billiard">Billiard</option>
-        <option value="tennis">Tennis</option>
-      </select>
-      <button class="btn btn-primary" onclick="addRoom()">أضف الغرفة</button>
+    <div class="card" style="margin-top:12px">
+      <h3>أضف غرفة جديدة</h3>
+      <div class="form-row">
+        <input id="room-name" class="input" placeholder="Room name">
+        <select id="room-type" class="input"><option value="ps5">PS5</option><option value="ps4">PS4</option><option value="billiard">Billiard</option><option value="tennis">Tennis</option></select>
+        <select id="room-sub" class="input"><option value="">(اختياري) pool/snooker/single/double</option><option value="pool">pool</option><option value="snooker">snooker</option><option value="single">single</option><option value="double">double</option></select>
+        <button class="btn btn-primary" onclick="addRoomFromAdmin()">أضف الغرفة</button>
+      </div>
     </div>
+
+    <div id="admin-rooms" style="margin-top:12px"></div>
+
+    <div class="card" style="margin-top:12px"><h3>المنتجات</h3><div id="admin-products"></div></div>
+
+    <div class="card" style="margin-top:12px"><h3>الفواتير</h3><div id="invoiceList"></div></div>
+
   </div>
 
-  <div id="admin-rooms" style="margin-top:12px"></div>
-
-  <div class="card" style="margin-top:12px">
-    <h3>المنتجات</h3>
-    <div id="admin-products"></div>
-  </div>
-</div>
-
-<script src="script.js"></script>
-</body>
-</html>
+  <script src="script.js"></script>
+</body></html>
