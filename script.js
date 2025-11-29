@@ -535,40 +535,7 @@ function startTicker(){
     });
   }, 800);
 }
-function startRoomTimer(roomId) {
-    const oldTimeInput = document.querySelector(`#${roomId} .old-time`);
-    const display = document.querySelector(`#${roomId} .timer-display`);
 
-    let startTime = new Date();
-    let oldValue = oldTimeInput.value;
-
-    // لو دخل وقت قديم
-    if (oldValue) {
-        let [h, m] = oldValue.split(":");
-        let past = new Date();
-        past.setHours(h);
-        past.setMinutes(m);
-        past.setSeconds(0);
-
-        if (past > startTime) past.setDate(past.getDate() - 1);
-
-        startTime = past;
-    }
-
-    // حفظ التايمر لكل غرفة
-    if (!window.roomTimers) window.roomTimers = {};
-    window.roomTimers[roomId] = setInterval(() => {
-        let now = new Date();
-        let diff = now - startTime;
-
-        let sec = Math.floor(diff / 1000);
-        let h = Math.floor(sec / 3600);
-        let m = Math.floor((sec % 3600) / 60);
-        let s = sec % 60;
-
-        display.innerText = `${h} ساعة : ${m} دقيقة : ${s} ثانية`;
-    }, 1000);
-    }
 // initial render
 function renderAll(){
   save(state);
@@ -576,4 +543,3 @@ function renderAll(){
   renderPlaystationPage(); renderBilliardPage(); renderTennisPage(); renderProductsPage(); renderAdmin(); renderInvoices();
 }
 window.addEventListener('load', ()=>{ renderAll(); startTicker(); });
-
