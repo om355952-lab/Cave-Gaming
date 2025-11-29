@@ -1,144 +1,31 @@
+<!-- ======================== index.html ======================== -->
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<title>إدارة الوقت - PlayStation & Games</title>
-
-<style>
-body{
-    margin:0;
-    background:#0c0e14;
-    color:white;
-    font-family:'Cairo',sans-serif;
-}
-header{
-    background:#11131c;
-    padding:15px;
-    text-align:center;
-    font-size:24px;
-    font-weight:900;
-    color:#00ffc6;
-    border-bottom:2px solid #00ffc6;
-}
-.container{
-    max-width:650px;
-    margin:30px auto;
-    background:#161923;
-    padding:22px;
-    border-radius:16px;
-    box-shadow:0 0 25px rgba(0,0,0,.45);
-}
-label{
-    margin-top:10px;
-    display:block;
-    font-size:17px;
-    font-weight:bold;
-}
-select,input{
-    width:100%;
-    padding:12px;
-    margin-top:6px;
-    border:none;
-    border-radius:10px;
-    background:#1f2433;
-    color:white;
-    font-size:16px;
-}
-button{
-    width:100%;
-    padding:14px;
-    background:#7a00ff;
-    border:none;
-    border-radius:10px;
-    margin-top:18px;
-    color:white;
-    font-size:18px;
-    font-weight:bold;
-    cursor:pointer;
-}
-button:hover{opacity:.85}
-.timer-box{
-    margin-top:22px;
-    background:#10131a;
-    padding:22px;
-    border-radius:14px;
-    text-align:center;
-    font-size:26px;
-    font-weight:900;
-    color:#00ffc6;
-    border:1px solid #00ffc6;
-}
-</style>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الكهف — إدارة المحل</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-<header>نظام حساب الوقت</header>
-
-<div class="container">
-
-    <label>نوع الغرفة:</label>
-    <select id="roomType">
-        <option value="PS4">PlayStation 4</option>
-        <option value="PS5">PlayStation 5</option>
-        <option value="billiard">بلياردو</option>
-        <option value="snooker">سنوكر</option>
-        <option value="tennis">تنس طاولة</option>
-    </select>
-
-    <label>وقت دخول العميل (اختياري):</label>
-    <input type="time" id="oldTime">
-
-    <button onclick="startTimer()">ابدأ الحساب</button>
-
-    <div class="timer-box" id="display">لم يبدأ الحساب بعد</div>
-
-</div>
-
-
-<script>
-let startTime;
-let timerLoop;
-
-// بدء الحساب
-function startTimer(){
-    clearInterval(timerLoop);
-
-    let oldValue = document.getElementById("oldTime").value;
-    startTime = new Date();
-
-    // لو دخل وقت سابق
-    if(oldValue){
-        let [h,m] = oldValue.split(":");
-        let past = new Date();
-        past.setHours(h);
-        past.setMinutes(m);
-        past.setSeconds(0);
-
-        // لو الساعة القديمة لسه هتيجي (بعد منتصف الليل)
-        if(past > startTime){
-            past.setDate(past.getDate() - 1);
-        }
-        startTime = past;
-    }
-
-    timerLoop = setInterval(updateTimer,1000);
-    updateTimer();
-}
-
-function updateTimer(){
-    let now = new Date();
-    let diff = now - startTime;
-
-    let sec = Math.floor(diff / 1000);
-    let h = Math.floor(sec / 3600);
-    let m = Math.floor((sec % 3600) / 60);
-    let s = sec % 60;
-
-    document.getElementById("display").innerText =
-        `${h} ساعة : ${m} دقيقة : ${s} ثانية`;
-}
-</script>
-
+  <header class="topbar">
+    <h1 class="brand-title">الكهف — إدارة المحل</h1>
+    <nav class="nav">
+      <a href="index.html" class="active">الرئيسية</a>
+      <a href="playstation.html">البلايستيشن</a>
+      <a href="billiard.html">البلياردو</a>
+      <a href="tennis.html">التنس</a>
+      <a href="products.html">المنتجات</a>
+      <a href="bills.html">الفواتير</a>
+    </nav>
+  </header>
+  <main class="container">
+    <h2 class="section-title">لوحة التحكم</h2>
+    <div class="stats-grid">
+      <div class="card">الغرف: <span id="stat-rooms">0</span></div>
+      <div class="card">المنتجات: <span id="stat-products">0</span></div>
+      <div class="card">الفواتير: <span id="stat-bills">0</span></div>
+    </div>
+  </main>
 </body>
-</html> 
+    </html> 
