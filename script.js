@@ -1,443 +1,545 @@
-/* script.js - كامل ومحدّث
-   يدعم: PS5, PS4, Billiard, Snooker, Tennis, Gym
-   حفظ في localStorage. العدّاد، المنبّه، الفاتورة.
-*/
+/* script.js - كامل: جلسات، ثيمات، منتجات، فواتير، admin - يحفظ في localStorage */
+const STORE_KEY = 'cave_v2_state';
 
-/* ----- مسار اللوجو (الملف اللي رفعته) ----- */
-const LOGO_PATH = '/mnt/data/08130c3a-70a1-4a3f-bd38-5d1c3b224c51.png';
+// ====== Default state ======
+const defaultState = {
+  prices: {
+    ps5_match: 35, ps5_hour: 60,
+    ps4_match: 25, ps4_hour: 45,
+    billiard_pool: 50, billiard_snooker: 60, billiard_hour: 40,
+    tennis_single: 40, tennis_double: 60
+  },
+  rooms: [
+    { id:'ps5_1', name:'PS5 1', type:'ps5' },
+    { id:'ps4_1', name:'PS4 1', type:'ps4' },
+    { id:'bil_1', name:'ترابيزة 1', type:'billiard', sub:'pool' },
+    { id:'ten_1', name:'طاولة 1', type:'tennis', sub:'single' }
+  ],
+  products:[
+    { id:'p1', name:'بيبسي', sellPrice:20, wholesalePrice:12, stock:50},
+    { id:'p2', name:'سندوتش', sellPrice:35, wholesalePrice:25, stock:30}
+  ],
+  sessions: [], // active and old sessions
+  invoices: [],
+  theme: 'gold' // gold, purple, neon
+};
 
-/* ----- مفاتيح التخزين ----- */
-const K_ROOMS = 'kahf_rooms';
-const K_PRICES = 'kahf_prices';
-const K_SESSIONS = 'kahf_sessions';
-const K_PRODUCTS = 'kahf_products';
-const K_THEME = 'kahf_theme';
-
-/* ----- مساعدة DOM ----- */
-function $(s){ return document.querySelector(s); }
-function $all(s){ return Array.from(document.querySelectorAll(s)); }
-function save(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
-function load(k,def){ try { const v = JSON.parse(localStorage.getItem(k)); return v===null?def:v||def } catch(e) { return def } }
-
-/* ----- اعدادات افتراضية ----- */
-function ensureDefaults(){
-  if(!load(K_PRICES, null)){
-    save(K_PRICES, {
-      ps5_per_hour: 40,
-      ps4_per_hour: 30,
-      billiard_per_hour: 60,
-      snooker_per_hour: 70,
-      tennis_per_hour: 40,
-      gym_per_hour: 35
-    });
-  }
-  if(!load(K_ROOMS, null)){
-    const rooms = [];
-    // PS5: 3
-    for(let i=1;i<=3;i++) rooms.push({id:`ps5_${i}`, name:`Room ${i}`, type:'ps5'});
-    // PS4: 4 (Room numbering continues separately per type)
-    for(let i=1;i<=4;i++) rooms.push({id:`ps4_${i}`, name:`Room ${i}`, type:'ps4'});
-    // Billiard: 3
-    for(let i=1;i<=3;i++) rooms.push({id:`billiard_${i}`, name:`Room ${i}`, type:'billiard'});
-    // Snooker: 0 by default (we allow admin to change type per table)
-    // Tennis: 1
-    rooms.push({id:`tennis_1`, name:`Room 1`, type:'tennis'});
-    // Gym: 1 (اضفت gym حسب طلبك)
-    rooms.push({id:`gym_1`, name:`Room 1`, type:'gym'});
-    save(K_ROOMS, rooms);
-  }
-  if(!load(K_SESSIONS, null)) save(K_SESSIONS, []);
-  if(!load(K_PRODUCTS, null)) save(K_PRODUCTS, [
-    { id: 'p1', name: 'Pepsi', price: 20, stock: 50 },
-    { id: 'p2', name: 'Chips', price: 15, stock: 40 }
-  ]);
-  const th = localStorage.getItem(K_THEME) || 'theme-default';
-  if(th) document.body.classList.add(th);
+// load/save
+function load(){
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) { localStorage.setItem(STORE_KEY, JSON.stringify(defaultState)); return JSON.parse(JSON.stringify(defaultState)); }
+    return JSON.parse(raw);
+  } catch(e){ console.error(e); localStorage.setItem(STORE_KEY, JSON.stringify(defaultState)); return JSON.parse(JSON.stringify(defaultState)); }
 }
-ensureDefaults();
+function save(state){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
 
-/* ----- جلسات & منطق الوقت ----- */
-function getRooms(){ return load(K_ROOMS, []) }
-function getPrices(){ return load(K_PRICES, {}) }
-function getSessions(){ return load(K_SESSIONS, []) }
-function saveSessions(arr){ save(K_SESSIONS, arr) }
+// helpers
+function uid(pref='id'){ return pref + '_' + Math.random().toString(36).slice(2,9); }
+function now(){ return Date.now(); }
+function fmtMs(ms){ const s = Math.floor(ms/1000); const hh = Math.floor(s/3600), mm = Math.floor((s%3600)/60), ss = s%60; const p=n=>String(n).padStart(2,'0'); return `${p(hh)}:${p(mm)}:${p(ss)}`; }
 
-/* فورمات الوقت HH:MM:SS */
-function fmtMs(ms){
-  const s = Math.floor(ms/1000);
-  const hh = Math.floor(s/3600), mm = Math.floor((s%3600)/60), ss = s%60;
-  const p = n => String(n).padStart(2,'0');
-  return `${p(hh)}:${p(mm)}:${p(ss)}`;
+// state in memory
+let state = load();
+
+// theme apply
+function applyTheme(){
+  document.body.classList.remove('theme-gold','theme-purple','theme-neon');
+  if(state.theme==='gold') document.body.classList.add('theme-gold');
+  if(state.theme==='purple') document.body.classList.add('theme-purple');
+  if(state.theme==='neon') document.body.classList.add('theme-neon');
 }
+applyTheme();
 
-/* لعب صوت المنبه */
-function playAlarm(){
-  const a = document.getElementById('alarmSound');
-  if(a) a.play().catch(()=>{});
-  else alert('🔔 تنبيه');
+// ====== Sessions logic ======
+// session object: {id, roomId, startedAt, accMs, stoppedAt(null if running), items:[], presetMinutes:null}
+function startSession(roomId, presetMinutes=0, startOffsetMin=0, mode=null){
+  // mode optional: 'match','hour','game' - used for pricing semantics
+  // check if running exists for same room
+  const running = state.sessions.find(s=> s.roomId===roomId && !s.stoppedAt && !s.endedAt);
+  if(running) return alert('يوجد جلسة شغالة لهذه الغرفة بالفعل.');
+  const s = { id: uid('S'), roomId, startedAt: now() - (startOffsetMin*60000), accMs:0, stoppedAt:null, endedAt:null, items:[], alarmMs:null, _fired:false, presetMinutes: presetMinutes>0? presetMinutes : null, mode };
+  state.sessions.push(s); save(state); renderAll();
 }
-
-/* إنشاء جلسة جديدة لغرفة */
-function startSession(roomId){
-  const sessions = getSessions();
-  if(sessions.find(s=> s.roomId===roomId && !s.stoppedAt)) return alert('هناك جلسة شغالة بالفعل لهذه الغرفة');
-  const s = { id: 'S'+Date.now(), roomId, startedAt: Date.now(), stoppedAt: null, accMs: 0, alarmMs: null, _fired: false };
-  sessions.push(s);
-  saveSessions(sessions);
-  renderAllPages();
-}
-
-/* إيقاف جلسة (finalize) */
-function stopSession(sessionId){
-  const sessions = getSessions();
-  const s = sessions.find(x=> x.id===sessionId);
-  if(!s || s.stoppedAt) return;
-  s.stoppedAt = Date.now();
-  s.accMs = (s.accMs || 0) + (s.stoppedAt - s.startedAt);
-  saveSessions(sessions);
-  playAlarm();
-  showInvoice(s);
-  renderAllPages();
-}
-
-/* Pause (توقيف مؤقت) */
 function pauseSession(sessionId){
-  const sessions = getSessions();
-  const s = sessions.find(x=> x.id===sessionId);
-  if(!s || s.stoppedAt) return;
-  s.stoppedAt = Date.now();
-  s.accMs = (s.accMs || 0) + (s.stoppedAt - s.startedAt);
-  // نترك الجلسة موجودة لكن نعتبرها متوقفه (يمكن إعادة تشغيلها كمواصلة) - هنا سنستخدم حذف startedAt لمعاودة start
-  saveSessions(sessions);
-  renderAllPages();
+  const s = state.sessions.find(x=> x.id===sessionId); if(!s || s.stoppedAt) return;
+  s.stoppedAt = now(); s.accMs = (s.accMs||0) + (s.stoppedAt - s.startedAt); save(state); renderAll();
 }
-
-/* استئناف جلسة (resume) */
 function resumeSession(sessionId){
-  const sessions = getSessions();
-  const s = sessions.find(x=> x.id===sessionId);
-  if(!s) return;
-  if(!s.stoppedAt){ return; } // مش متوقفة
-  // نعيد تعيين startedAt = الآن مع الاحتفاظ بـ accMs
-  s.startedAt = Date.now();
-  s.stoppedAt = null;
-  saveSessions(sessions);
-  renderAllPages();
+  const s = state.sessions.find(x=> x.id===sessionId); if(!s || !s.stoppedAt || s.endedAt) return;
+  s.startedAt = now(); s.stoppedAt = null; save(state); renderAll();
+}
+function endSession(sessionId){
+  const s = state.sessions.find(x=> x.id===sessionId); if(!s) return;
+  if(!s.stoppedAt){ s.stoppedAt = now(); s.accMs = (s.accMs||0) + (s.stoppedAt - s.startedAt); }
+  s.endedAt = now();
+  // compute invoice and push
+  const room = state.rooms.find(r=> r.id===s.roomId);
+  const perHour = computePricePerHour(room, s.mode);
+  const minutes = Math.ceil((s.accMs||0)/60000);
+  const timeCost = (perHour/60)*minutes;
+  const prodCost = (s.items||[]).reduce((a,b)=> a + (b.sellPrice*b.qty),0);
+  const total = Math.round((timeCost + prodCost)*100)/100;
+  const inv = { id: uid('INV'), sessionId: s.id, roomId: s.roomId, t: now(), timeMin: minutes, timeCost, prodCost, total, items: s.items||[] };
+  state.invoices.push(inv);
+  save(state); renderAll(); showInvoice(inv);
 }
 
-/* ضبط منبه زمني (بالدقائق) للجلسة النشطة لغرفة */
-function setAlarmForRoom(roomId){
-  const sessions = getSessions();
-  const active = sessions.find(s => s.roomId===roomId && !s.stoppedAt);
-  if(!active) return alert('افتح الجلسة أولاً');
-  const mins = prompt('اضبط منبه بعد كم دقيقة؟ (مثال: 30)');
-  if(!mins) return;
-  const m = parseFloat(mins);
-  if(isNaN(m) || m <= 0) return alert('ادخل رقم صحيح');
-  active.alarmMs = Math.round(m * 60000);
-  active._fired = false;
-  saveSessions(sessions);
-  alert('تم ضبط المنبه');
+// compute price per hour based on room & mode
+function computePricePerHour(room, mode){
+  const p = state.prices || (state.prices = (defaultState.prices));
+  if(!room) return 0;
+  if(room.type==='ps5'){
+    if(mode==='match') return p.ps5_match || p.ps5_hour || 0;
+    return p.ps5_hour || 0;
+  }
+  if(room.type==='ps4'){
+    if(mode==='match') return p.ps4_match || p.ps4_hour || 0;
+    return p.ps4_hour || 0;
+  }
+  if(room.type==='billiard'){
+    if(room.sub==='snooker') return p.billiard_snooker || p.billiard_pool || p.billiard_hour || 0;
+    return p.billiard_pool || p.billiard_hour || 0;
+  }
+  if(room.type==='tennis'){
+    if(room.sub==='double') return p.tennis_double || p.tennis_single || 0;
+    return p.tennis_single || 0;
+  }
+  return 0;
 }
 
-/* علامة انه تم تشغيل المنبه بالفعل مرة واحدة */
-function markAlarmFired(sessionId){
-  const arr = getSessions();
-  const s = arr.find(x=> x.id===sessionId);
-  if(s){ s._fired = true; saveSessions(arr); }
+// products logic
+function addProduct(name, sellPrice, wholesalePrice, stock){
+  const p = { id: uid('P'), name, sellPrice: Number(sellPrice||0), wholesalePrice: Number(wholesalePrice||0), stock: Number(stock||0) };
+  state.products.push(p); save(state); renderAll();
+}
+function deleteProduct(id){ if(!confirm('حذف المنتج؟')) return; state.products = state.products.filter(p=> p.id!==id); save(state); renderAll(); }
+function sellProductStandalone(productId, qty=1){
+  const product = state.products.find(x=> x.id===productId); if(!product) return alert('منتج غير موجود');
+  qty = Number(qty||1);
+  if(product.stock !== undefined && product.stock < qty) return alert('المخزون لا يكفي');
+  if(product.stock !== undefined) product.stock -= qty;
+  const total = product.sellPrice * qty;
+  const inv = { id: uid('INV'), sessionId:null, roomId:null, t: now(), timeMin:0, timeCost:0, prodCost: total, total, items: [{ id: uid('ITM'), productId:product.id, name:product.name, qty, sellPrice:product.sellPrice }] };
+  state.invoices.push(inv); save(state); renderAll(); showInvoice(inv);
+}
+function addProductToSession(sessionId, productId, qty=1){
+  const s = state.sessions.find(x=> x.id===sessionId); if(!s) return alert('جلسة غير موجودة');
+  const p = state.products.find(x=> x.id===productId); if(!p) return alert('منتج غير موجود');
+  qty = Number(qty||1);
+  if(p.stock !== undefined && p.stock < qty) return alert('المخزون لا يكفي');
+  p.stock -= qty;
+  s.items.push({ id: uid('CI'), productId: p.id, name: p.name, sellPrice: p.sellPrice, qty });
+  save(state); renderAll();
+}
+function removeItemFromSession(sessionId, itemId){
+  const s = state.sessions.find(x=> x.id===sessionId); if(!s) return;
+  const it = s.items.find(i=> i.id===itemId); if(it){
+    const p = state.products.find(x=> x.id===it.productId); if(p) p.stock += it.qty;
+  }
+  s.items = s.items.filter(i=> i.id!==itemId); save(state); renderAll();
 }
 
-/* فاتورة مبسطة */
-function showInvoice(session){
-  const rooms = getRooms();
-  const room = rooms.find(r=> r.id === session.roomId);
-  const prices = getPrices();
-  let perHour = 0;
-  if(room.type === 'ps5') perHour = prices.ps5_per_hour || 0;
-  else if(room.type === 'ps4') perHour = prices.ps4_per_hour || 0;
-  else if(room.type === 'billiard') perHour = prices.billiard_per_hour || 0;
-  else if(room.type === 'snooker') perHour = prices.snooker_per_hour || 0;
-  else if(room.type === 'tennis') perHour = prices.tennis_per_hour || 0;
-  else if(room.type === 'gym') perHour = prices.gym_per_hour || 0;
-  const minutes = Math.ceil((session.accMs || 0) / 60000);
-  const total = (perHour / 60) * minutes;
-  alert(`فاتورة الجلسة:\nالغرفة: ${room.name}\nالنوع: ${room.type}\nالمدة: ${minutes} دقيقة\nالإجمالي: ${total.toFixed(2)} جنيه`);
+// invoice show (modal)
+function showInvoice(inv){
+  const modal = document.createElement('div'); modal.className='modal-backdrop';
+  modal.innerHTML = `
+    <div class="invoice-modal">
+      <div class="invoice-header">
+        <div><h3>فاتورة — ${inv.id}</h3><div class="small">${new Date(inv.t).toLocaleString()}</div></div>
+        <div><button class="btn btn-ghost" id="closeInv">إغلاق</button></div>
+      </div>
+      <div style="margin-top:10px">الغرفة: <strong>${inv.roomId||'بيع مستقل'}</strong></div>
+      <div>المدة: <strong>${inv.timeMin||0} دقيقة</strong></div>
+      <div class="invoice-items">
+        ${(inv.items || []).map(it=>`<div style="display:flex;justify-content:space-between;padding:6px 0">${it.name} x${it.qty} <strong>${(it.sellPrice || it.price || 0) * (it.qty||1)} ج</strong></div>`).join('')}
+      </div>
+      <div class="invoice-footer">
+        <div>تكلفة الوقت: <strong>${inv.timeCost||0} ج</strong></div>
+        <div>تكلفة المنتجات: <strong>${inv.prodCost||0} ج</strong></div>
+      </div>
+      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:900;font-size:18px">الإجمالي: ${inv.total} ج</div>
+        <div style="display:flex;gap:8px"><button class="btn btn-primary" id="printInv">طباعة</button><button class="btn btn-ghost" id="closeInv2">إغلاق</button></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('closeInv').onclick = ()=> modal.remove();
+  document.getElementById('closeInv2').onclick = ()=> modal.remove();
+  document.getElementById('printInv').onclick = ()=> {
+    const w = window.open('','_blank','width=700,height=900');
+    w.document.write(`<html><head><meta charset="utf-8"><title>فاتورة ${inv.id}</title></head><body style="font-family:Arial;padding:18px">${modal.querySelector('.invoice-modal').innerHTML}</body></html>`);
+    w.document.close();
+    w.print();
+  };
 }
 
-/* ----- تحديث العرض (Timers + Prices) ----- */
-let _tick = null;
-function startTicker(){
-  if(_tick) clearInterval(_tick);
-  _tick = setInterval(()=>{
-    // تحقق من منبهات
-    const sessions = getSessions();
-    sessions.forEach(s=>{
-      if(!s.stoppedAt && s.alarmMs && !s._fired){
-        const elapsed = Date.now() - s.startedAt + (s.accMs || 0);
-        if(elapsed >= s.alarmMs){
-          playAlarm();
-          s._fired = true;
-          saveSessions(sessions);
-          alert('انتهى وقت المنبه للغرفة');
-        }
-      }
-    });
-    // حدّث عناصر الوقت والسعر على كل الصفحات
-    updateTimersOnPage();
-  }, 800);
-}
-function updateTimersOnPage(){
-  getRooms().forEach(r=>{
-    const tEl = document.getElementById('timer_'+r.id);
-    const pEl = document.getElementById('price_'+r.id);
-    const sessions = getSessions();
-    const active = sessions.find(x=> x.roomId===r.id && !x.stoppedAt);
-    if(tEl){
-      tEl.textContent = active ? fmtMs((Date.now() - active.startedAt) + (active.accMs || 0)) : '00:00:00';
-    }
-    if(pEl){
-      if(active){
-        const prices = getPrices();
-        let perHour = 0;
-        if(r.type === 'ps5') perHour = prices.ps5_per_hour || 0;
-        else if(r.type === 'ps4') perHour = prices.ps4_per_hour || 0;
-        else if(r.type === 'billiard') perHour = prices.billiard_per_hour || 0;
-        else if(r.type === 'snooker') perHour = prices.snooker_per_hour || 0;
-        else if(r.type === 'tennis') perHour = prices.tennis_per_hour || 0;
-        else if(r.type === 'gym') perHour = prices.gym_per_hour || 0;
-        const mins = Math.ceil(((Date.now() - active.startedAt) + (active.accMs || 0))/60000);
-        pEl.textContent = ((perHour/60)*mins).toFixed(2);
-      } else pEl.textContent = '0.00';
-    }
-  });
-}
-
-/* ----- رندر صفحات منفصلة ----- */
-
-/* PlayStation */
-function renderPlaystation(){
-  const el = $('#play-rooms');
-  if(!el) return;
+// render helpers for pages
+function renderPlaystationPage(){
+  const el = document.getElementById('play-rooms'); if(!el) return;
   el.innerHTML = '';
-  const rooms = getRooms().filter(r=> r.type==='ps5' || r.type==='ps4');
+  const rooms = state.rooms.filter(r=> r.type==='ps5' || r.type==='ps4');
   rooms.forEach(r=>{
-    const s = getSessions().find(x=> x.roomId===r.id && !x.stoppedAt);
-    const div = document.createElement('div'); div.className='card room';
-    div.innerHTML = `
-      <h3>${r.type.toUpperCase()} — ${r.name}</h3>
-      <div class="timer-widget" style="display:flex;gap:14px;align-items:center">
-        <div class="timer-circle">
-          <svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="52"></circle><circle class="progress" cx="60" cy="60" r="52" stroke="#9b00ff" style="stroke-dasharray:${2*Math.PI*52};stroke-dashoffset:${2*Math.PI*52}"></circle></svg>
-          <div class="timer-center"><div id="timer_${r.id}" class="digital">${s? fmtMs((Date.now()-s.startedAt)+(s.accMs||0)) : '00:00:00'}</div><div class="small">الوقت</div></div>
+    const active = state.sessions.find(s=> s.roomId===r.id && !s.stoppedAt && !s.endedAt);
+    const paused = state.sessions.find(s=> s.roomId===r.id && s.stoppedAt && !s.endedAt);
+    const elapsed = active? ((now()-active.startedAt) + (active.accMs||0)) : (paused? (paused.accMs||0) : 0);
+    const minutes = Math.ceil(elapsed/60000);
+    const circ = 2*Math.PI*46;
+    const svgId = 'ring_'+r.id;
+    const dash = ((1 - 0) * circ).toFixed(2);
+    const priceNow = ((computePricePerHour(r, active?active.mode:null)/60)*minutes).toFixed(2);
+    const card = document.createElement('div'); card.className='card room';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <h3>${r.name} — ${r.type.toUpperCase()}</h3>
+          <div class="muted">${r.sub? r.sub : ''}</div>
+          <div style="margin-top:6px">الحالة: ${active?'<strong style="color:#ff8b8b">مشغول</strong>':(paused?'<strong style="color:#ffd77a">موقوف</strong>':'<strong style="color:#9ff6c6">متاح</strong>')}</div>
         </div>
-        <div style="flex:1">
-          <div style="margin-bottom:8px">السعر الآن: <span id="price_${r.id}" class="price">0.00</span> ج</div>
-          <div class="controls">
-            <button class="btn btn-primary" onclick="startSession('${r.id}')">ابدأ</button>
-            <button class="btn btn-ghost" onclick="pauseOrStopRoom('${r.id}')">إيقاف مؤقت</button>
-            <button class="btn btn-accent" onclick="setAlarmForRoom('${r.id}')">🔔 ضبط منبه</button>
+        <div class="timer-wrap" style="margin-left:auto">
+          <div class="timer-svg">
+            <svg width="110" height="110" viewBox="0 0 110 110">
+              <circle cx="55" cy="55" r="46" stroke="rgba(255,255,255,0.04)" stroke-width="10" fill="none"></circle>
+              <circle id="${svgId}" data-circ="${circ}" cx="55" cy="55" r="46" stroke="${active? '#ff6b6b' : 'var(--accent1)'}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${dash}"></circle>
+            </svg>
+            <div class="timer-center" id="time_${r.id}">${active? fmtMs(elapsed) : (paused? fmtMs(elapsed) : '00:00:00')}</div>
+          </div>
+          <div style="min-width:160px">
+            <div style="margin-bottom:8px">المبلغ الآن: <strong id="price_${r.id}" class="price">${priceNow} ج</strong></div>
+            <div class="controls">
+              <button class="btn btn-primary" onclick="openStartDialog('${r.id}','ps')">${active? 'تعديل/استئناف' : 'بدء'}</button>
+              <button class="btn btn-ghost" onclick="quickPauseResume('${r.id}')">${active? 'إيقاف مؤقت' : (paused? 'استئناف' : '—')}</button>
+              <button class="btn btn-ghost" onclick="openAddProductToRoomPrompt('${r.id}')">أضف منتج</button>
+              <button class="btn btn-ghost" onclick="openCheckout('${r.id}')">تحصيل</button>
+            </div>
           </div>
         </div>
       </div>
+      <div id="cart_${r.id}" class="cart-list">${renderCartHtmlForRoom(r.id)}</div>
     `;
-    el.appendChild(div);
+    el.appendChild(card);
   });
 }
 
-/* Billiard & Snooker - render as requested (type selectable per room) */
-function renderBilliardSnooker(){
-  const el = $('#billiard-rooms');
-  if(!el) return;
+function renderBilliardPage(){
+  const el = document.getElementById('billiard-rooms'); if(!el) return;
   el.innerHTML = '';
-  const rooms = getRooms().filter(r=> r.type === 'billiard' || r.type === 'snooker');
+  const rooms = state.rooms.filter(r=> r.type==='billiard' || r.type==='snooker');
   rooms.forEach(r=>{
-    const s = getSessions().find(x=> x.roomId===r.id && !x.stoppedAt);
-    const div = document.createElement('div'); div.className='card room';
-    div.innerHTML = `
-      <h3>${(r.type==='billiard'?'Billiard':'Snooker')} — ${r.name}</h3>
-      <div id="timer_${r.id}" class="timer">${s? fmtMs((Date.now()-s.startedAt)+(s.accMs||0)) : '00:00:00'}</div>
-      <div style="margin-top:8px">السعر الآن: <span id="price_${r.id}" class="price">0.00</span> ج</div>
-      <div class="controls" style="margin-top:8px">
-        <button class="btn btn-primary" onclick="startSession('${r.id}')">ابدأ</button>
-        <button class="btn btn-ghost" onclick="pauseOrStopRoom('${r.id}')">إيقاف مؤقت</button>
-        <button class="btn btn-accent" onclick="setAlarmForRoom('${r.id}')">🔔 ضبط منبه</button>
+    const active = state.sessions.find(s=> s.roomId===r.id && !s.stoppedAt && !s.endedAt);
+    const paused = state.sessions.find(s=> s.roomId===r.id && s.stoppedAt && !s.endedAt);
+    const elapsed = active? ((now()-active.startedAt) + (active.accMs||0)) : (paused? (paused.accMs||0) : 0);
+    const circ = 2*Math.PI*46;
+    const svgId = 'ring_'+r.id;
+    const priceNow = ((computePricePerHour(r, active?active.mode:null)/60)*Math.ceil(elapsed/60000)).toFixed(2);
+    const card = document.createElement('div'); card.className='card room';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div><h3>${r.name} — ${r.sub||''}</h3><div class="muted">${r.type}</div></div>
+        <div class="timer-wrap" style="margin-left:auto">
+          <div class="timer-svg"><svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="46" stroke="rgba(255,255,255,0.04)" stroke-width="10" fill="none"></circle><circle id="${svgId}" data-circ="${circ}" cx="55" cy="55" r="46" stroke="var(--accent2)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ}"></circle></svg><div class="timer-center" id="time_${r.id}">${active? fmtMs(elapsed) : (paused? fmtMs(elapsed) : '00:00:00')}</div></div>
+          <div style="min-width:160px"><div>المبلغ الآن: <strong id="price_${r.id}" class="price">${priceNow} ج</strong></div><div class="controls"><button class="btn btn-primary" onclick="openStartDialog('${r.id}','billiard')">بدء</button><button class="btn btn-ghost" onclick="quickPauseResume('${r.id}')">إيقاف/استئناف</button><button class="btn btn-ghost" onclick="openAddProductToRoomPrompt('${r.id}')">أضف منتج</button><button class="btn btn-ghost" onclick="openCheckout('${r.id}')">تحصيل</button></div></div>
+        </div>
       </div>
+      <div id="cart_${r.id}" class="cart-list">${renderCartHtmlForRoom(r.id)}</div>
     `;
-    el.appendChild(div);
+    el.appendChild(card);
   });
 }
 
-/* Tennis page */
-function renderTennis(){
-  const el = $('#tennis-rooms'); if(!el) return;
+function renderTennisPage(){
+  const el = document.getElementById('tennis-rooms'); if(!el) return;
   el.innerHTML = '';
-  const rooms = getRooms().filter(r=> r.type === 'tennis');
+  const rooms = state.rooms.filter(r=> r.type==='tennis');
   rooms.forEach(r=>{
-    const s = getSessions().find(x=> x.roomId===r.id && !x.stoppedAt);
-    const div = document.createElement('div'); div.className='card room';
-    div.innerHTML = `
-      <h3>Tennis — ${r.name}</h3>
-      <div id="timer_${r.id}" class="timer">${s? fmtMs((Date.now()-s.startedAt)+(s.accMs||0)) : '00:00:00'}</div>
-      <div style="margin-top:8px">السعر الآن: <span id="price_${r.id}" class="price">0.00</span> ج</div>
-      <div class="controls" style="margin-top:8px">
-        <button class="btn btn-primary" onclick="startSession('${r.id}')">ابدأ</button>
-        <button class="btn btn-ghost" onclick="pauseOrStopRoom('${r.id}')">إيقاف مؤقت</button>
-        <button class="btn btn-accent" onclick="setAlarmForRoom('${r.id}')">🔔 ضبط منبه</button>
+    const active = state.sessions.find(s=> s.roomId===r.id && !s.stoppedAt && !s.endedAt);
+    const paused = state.sessions.find(s=> s.roomId===r.id && s.stoppedAt && !s.endedAt);
+    const elapsed = active? ((now()-active.startedAt) + (active.accMs||0)) : (paused? (paused.accMs||0) : 0);
+    const circ = 2*Math.PI*46;
+    const svgId = 'ring_'+r.id;
+    const priceNow = ((computePricePerHour(r, active?active.mode:null)/60)*Math.ceil(elapsed/60000)).toFixed(2);
+    const card = document.createElement('div'); card.className='card room';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div><h3>${r.name} — ${r.sub||''}</h3><div class="muted">${r.type}</div></div>
+        <div class="timer-wrap" style="margin-left:auto">
+          <div class="timer-svg"><svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="46" stroke="rgba(255,255,255,0.04)" stroke-width="10" fill="none"></circle><circle id="${svgId}" data-circ="${circ}" cx="55" cy="55" r="46" stroke="var(--accent1)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ}"></circle></svg><div class="timer-center" id="time_${r.id}">${active? fmtMs(elapsed) : (paused? fmtMs(elapsed) : '00:00:00')}</div></div>
+          <div style="min-width:160px"><div>المبلغ الآن: <strong id="price_${r.id}" class="price">${priceNow} ج</strong></div><div class="controls"><button class="btn btn-primary" onclick="openStartDialog('${r.id}','tennis')">بدء</button><button class="btn btn-ghost" onclick="quickPauseResume('${r.id}')">إيقاف/استئناف</button><button class="btn btn-ghost" onclick="openAddProductToRoomPrompt('${r.id}')">أضف منتج</button><button class="btn btn-ghost" onclick="openCheckout('${r.id}')">تحصيل</button></div></div>
+        </div>
       </div>
+      <div id="cart_${r.id}" class="cart-list">${renderCartHtmlForRoom(r.id)}</div>
     `;
-    el.appendChild(div);
+    el.appendChild(card);
   });
 }
 
-/* Gym page */
-function renderGym(){
-  const el = $('#gym-rooms'); if(!el) return;
-  el.innerHTML = '';
-  const rooms = getRooms().filter(r=> r.type === 'gym');
-  rooms.forEach(r=>{
-    const s = getSessions().find(x=> x.roomId===r.id && !x.stoppedAt);
-    const div = document.createElement('div'); div.className='card room';
-    div.innerHTML = `
-      <h3>Gym — ${r.name}</h3>
-      <div id="timer_${r.id}" class="timer">${s? fmtMs((Date.now()-s.startedAt)+(s.accMs||0)) : '00:00:00'}</div>
-      <div style="margin-top:8px">السعر الآن: <span id="price_${r.id}" class="price">0.00</span> ج</div>
-      <div class="controls" style="margin-top:8px">
-        <button class="btn btn-primary" onclick="startSession('${r.id}')">ابدأ</button>
-        <button class="btn btn-ghost" onclick="pauseOrStopRoom('${r.id}')">إيقاف مؤقت</button>
-        <button class="btn btn-accent" onclick="setAlarmForRoom('${r.id}')">🔔 ضبط منبه</button>
-      </div>
-    `;
-    el.appendChild(div);
-  });
+// cart renderer for a room (active or paused)
+function renderCartHtmlForRoom(roomId){
+  const s = state.sessions.find(x=> x.roomId===roomId && !x.endedAt);
+  if(!s) return `<div style="color:#9aa8b3">لا توجد منتجات</div>`;
+  const items = s.items||[];
+  if(items.length===0) return `<div style="color:#9aa8b3">لا توجد منتجات</div>`;
+  return items.map(it=>`<div class="cart-item"><div>${it.name} x${it.qty} <strong>${(it.sellPrice*it.qty)} ج</strong></div><div><button class="btn btn-ghost btn-small" onclick="removeItemFromSession('${s.id}','${it.id}')">حذف</button></div></div>`).join('');
 }
 
-/* Sell products (simple) */
-function renderProducts(){
-  const el = $('#products-list'); if(!el) return;
-  el.innerHTML = '';
-  const products = load(K_PRODUCTS, []);
-  if(products.length === 0){ el.innerHTML = `<div class="card">لا توجد منتجات</div>`; return; }
-  products.forEach(p=>{
-    const d = document.createElement('div'); d.className='card';
-    d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${p.name}</strong><div class="small">سعر: ${p.price} ج — الكمية: ${p.stock}</div></div><div><button class="btn btn-primary" onclick="sellProduct('${p.id}')">بيع</button></div></div>`;
-    el.appendChild(d);
-  });
-}
-function sellProduct(productId){
-  const arr = load(K_PRODUCTS, []);
-  const p = arr.find(x=> x.id===productId);
-  if(!p) return;
-  if(p.stock <= 0) return alert('نفذ المنتج');
-  p.stock -= 1;
-  save(K_PRODUCTS, arr);
-  renderProducts();
-  alert('تم البيع: ' + p.name);
-}
-
-/* Pause or stop helper (pause behaviour here we finalize partial time but keep session record) */
-function pauseOrStopRoom(roomId){
-  const sessions = getSessions();
-  const s = sessions.find(x=> x.roomId===roomId && !x.stoppedAt);
-  if(!s) return alert('لا توجد جلسة شغالة');
-  // هنا نعتبرها إيقاف مؤقت (نخزن accMs)
-  s.stoppedAt = Date.now();
-  s.accMs = (s.accMs || 0) + (s.stoppedAt - s.startedAt);
-  saveSessions(sessions);
-  playAlarm();
-  renderAllPages();
-}
-
-/* ----- Admin: add/delete rooms, prices, products ----- */
+// admin render
 function renderAdmin(){
-  const prices = getPrices();
-  if($('#price-ps5')) $('#price-ps5').value = prices.ps5_per_hour || '';
-  if($('#price-ps4')) $('#price-ps4').value = prices.ps4_per_hour || '';
-  if($('#price-b')) $('#price-b').value = prices.billiard_per_hour || '';
-  if($('#price-s')) $('#price-s').value = prices.snooker_per_hour || '';
-  if($('#price-t')) $('#price-t').value = prices.tennis_per_hour || '';
-  if($('#price-g')) $('#price-g').value = prices.gym_per_hour || '';
-
   // rooms list
-  const rooms = getRooms();
-  const el = $('#admin-rooms'); if(el){
+  const el = document.getElementById('admin-rooms'); if(el){
     el.innerHTML = '';
-    rooms.forEach(r=>{
+    state.rooms.forEach(r=>{
       const d = document.createElement('div'); d.className='card'; d.style.marginBottom='8px';
-      d.innerHTML = `<strong>${r.type.toUpperCase()} — ${r.name}</strong> <div style="margin-top:6px"><button class="btn btn-ghost" onclick="deleteRoom('${r.id}')">حذف</button></div>`;
+      d.innerHTML = `<strong>${r.type.toUpperCase()} — ${r.name}</strong><div style="margin-top:6px"><button class="btn btn-ghost" onclick="deleteRoom('${r.id}')">حذف</button></div>`;
       el.appendChild(d);
     });
   }
-  // products list
-  const prodEl = $('#admin-products'); if(prodEl){
-    prodEl.innerHTML = '';
-    load(K_PRODUCTS, []).forEach(p=>{
-      const d = document.createElement('div'); d.className='card'; d.innerHTML = `${p.name} — ${p.price}ج — ${p.stock} <button class="btn btn-ghost" onclick="deleteProduct('${p.id}')">حذف</button>`; prodEl.appendChild(d);
+  // products admin
+  const ap = document.getElementById('admin-products'); if(ap){
+    ap.innerHTML = '';
+    state.products.forEach(p=>{
+      const d = document.createElement('div'); d.className='card'; d.style.marginBottom='8px';
+      d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${p.name}</strong><div class="small">${p.sellPrice} ج — جملة:${p.wholesalePrice||'-'} — مخزون: ${p.stock}</div></div><div><button class="btn btn-ghost" onclick="deleteProduct('${p.id}')">حذف</button></div></div>`;
+      ap.appendChild(d);
     });
   }
-}
-function addRoom(){
-  const name = $('#room-name').value || (`Room ${Date.now()}`);
-  const type = $('#room-type').value;
-  const rooms = getRooms();
-  const id = `${type}_${Date.now()}`;
-  rooms.push({id,name,type});
-  save(K_ROOMS, rooms);
-  $('#room-name').value='';
-  renderAdmin(); renderAllPages();
-  alert('تم إضافة الغرفة');
-}
-function deleteRoom(id){
-  if(!confirm('حذف الغرفة؟')) return;
-  const arr = getRooms().filter(r=> r.id!==id);
-  save(K_ROOMS, arr);
-  renderAdmin(); renderAllPages();
-}
-function savePrices(){
-  const ps5 = parseFloat($('#price-ps5').value||0);
-  const ps4 = parseFloat($('#price-ps4').value||0);
-  const b = parseFloat($('#price-b').value||0);
-  const s = parseFloat($('#price-s').value||0);
-  const t = parseFloat($('#price-t').value||0);
-  const g = parseFloat($('#price-g').value||0);
-  save(K_PRICES, {ps5_per_hour:ps5, ps4_per_hour:ps4, billiard_per_hour:b, snooker_per_hour:s, tennis_per_hour:t, gym_per_hour:g});
-  alert('تم حفظ الأسعار');
-  renderAllPages();
+  // prices inputs
+  if(document.getElementById('price-ps5')) document.getElementById('price-ps5').value = state.prices.ps5_hour;
+  if(document.getElementById('price-ps4')) document.getElementById('price-ps4').value = state.prices.ps4_hour;
+  if(document.getElementById('price-ps5m')) document.getElementById('price-ps5m').value = state.prices.ps5_match;
+  if(document.getElementById('price-ps4m')) document.getElementById('price-ps4m').value = state.prices.ps4_match;
+  if(document.getElementById('price-b')) document.getElementById('price-b').value = state.prices.billiard_pool;
+  if(document.getElementById('price-s')) document.getElementById('price-s').value = state.prices.billiard_snooker;
+  if(document.getElementById('price-t1')) document.getElementById('price-t1').value = state.prices.tennis_single;
+  if(document.getElementById('price-t2')) document.getElementById('price-t2').value = state.prices.tennis_double;
 }
 
-/* products admin */
-function addProduct(){
-  const name = $('#prod-name').value || 'منتج';
-  const price = parseFloat($('#prod-price').value||0);
-  const stock = parseInt($('#prod-stock').value||0);
-  const arr = load(K_PRODUCTS, []);
-  arr.push({id:'p'+Date.now(), name, price, stock});
-  save(K_PRODUCTS, arr);
-  $('#prod-name').value=''; $('#prod-price').value=''; $('#prod-stock').value='';
-  renderAdmin(); renderProducts();
+// products page render
+function renderProductsPage(){
+  const el = document.getElementById('products-list'); if(!el) return;
+  el.innerHTML = '';
+  state.products.forEach(p=>{
+    const d = document.createElement('div'); d.className='card';
+    d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${p.name}</strong><div class="small">${p.sellPrice} ج — جملة:${p.wholesalePrice||'-'} — مخزون:${p.stock}</div></div><div style="display:flex;flex-direction:column;gap:8px"><button class="btn btn-primary" onclick="sellProductStandalonePrompt('${p.id}')">بيع</button><button class="btn btn-ghost" onclick="deleteProduct('${p.id}')">حذف</button></div></div>`;
+    el.appendChild(d);
+  });
+}
+
+// invoices render
+function renderInvoices(){
+  const el = document.getElementById('invoiceList'); if(!el) return;
+  el.innerHTML = '';
+  state.invoices.slice().reverse().forEach(inv=>{
+    const d = document.createElement('div'); d.className='card'; d.style.marginBottom='8px';
+    d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>فاتورة ${inv.id}</strong><div class="small">${new Date(inv.t).toLocaleString()}</div></div><div><strong>${inv.total} ج</strong></div></div><div style="margin-top:8px"><button class="btn btn-ghost" onclick="showInvoice(${JSON.stringify(inv).replace(/"/g,"&quot;")})">عرض/طباعة</button></div>`;
+    el.appendChild(d);
+  });
+}
+
+// ====== UI dialogs & prompts ======
+function openStartDialog(roomId, pageType){
+  // pageType used to decide available modes
+  // build buttons for available modes based on room type
+  const room = state.rooms.find(r=> r.id===roomId);
+  if(!room) return alert('غرفة غير موجودة');
+  // create modal
+  const modal = document.createElement('div'); modal.className='modal-backdrop';
+  // modes options UI depends on type
+  let modeButtonsHTML = '';
+  if(room.type==='ps5' || room.type==='ps4'){
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','match')">مباراة</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','hour')">ساعة</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','training')">تدريب</button>`;
+  } else if(room.type==='billiard'){
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','pool')">Pool</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','snooker')">Snooker</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','hour')">ساعة</button>`;
+  } else if(room.type==='tennis'){
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','single')">فردي</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','double')">زوجي</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','hour')">ساعة</button>`;
+  } else {
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','hour')">ساعة</button>`;
+  }
+
+  modal.innerHTML = `
+    <div class="invoice-modal" style="max-width:520px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><h3>بدء جلسة — ${room.name}</h3><div class="small">اختر الوضع ووقت البدء</div></div>
+        <div><button class="btn btn-ghost" id="closeStart">إلغاء</button></div>
+      </div>
+      <div style="margin-top:12px" class="form-row">
+        <label class="small">ابدأ من (دقائق قبل الآن):</label>
+        <input id="startOffset" class="input" type="number" placeholder="مثال: 60 = دخلوا من ساعة">
+      </div>
+      <div style="margin-top:8px" class="controls">${modeButtonsHTML}</div>
+      <div style="margin-top:8px" class="controls"><button class="btn btn-ghost" onclick="document.getElementById('startOffset').value=15">15</button><button class="btn btn-ghost" onclick="document.getElementById('startOffset').value=30">30</button><button class="btn btn-ghost" onclick="document.getElementById('startOffset').value=60">60</button></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('closeStart').onclick = ()=> modal.remove();
+
+  // attach helper to window so invoked from inline onclick
+  window.__startMode = function(roomIdArg, chosenMode){
+    const offset = Number(document.getElementById('startOffset').value||0);
+    // map chosenMode to session mode and preset minutes if needed
+    let preset = 0;
+    let mode = null;
+    if(chosenMode==='match'){ mode='match'; preset=0; } 
+    else if(chosenMode==='hour'){ mode='hour'; preset=0; }
+    else if(chosenMode==='training'){ mode='training'; }
+    else if(chosenMode==='pool'){ mode='pool'; }
+    else if(chosenMode==='snooker'){ mode='snooker'; }
+    else if(chosenMode==='single'){ mode='single'; }
+    else if(chosenMode==='double'){ mode='double'; }
+    startSession(roomIdArg, preset, offset, mode);
+    modal.remove();
+  };
+}
+
+function openAddProductToRoomPrompt(roomId){
+  // show dropdown of products and qty
+  const modal = document.createElement('div'); modal.className='modal-backdrop';
+  const productsHtml = state.products.map(p=>`<option value="${p.id}">${p.name} — ${p.sellPrice} ج — مخزون:${p.stock}</option>`).join('');
+  modal.innerHTML = `
+    <div class="invoice-modal" style="max-width:520px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><h3>أضف منتج — ${roomId}</h3><div class="small">اختر المنتج والكمية</div></div>
+        <div><button class="btn btn-ghost" id="closeAddProd">إلغاء</button></div>
+      </div>
+      <div style="margin-top:10px" class="form-row"><select id="prodSelect" class="input">${productsHtml}</select><input id="prodQty" class="input" type="number" value="1" min="1"></div>
+      <div style="margin-top:10px"><button class="btn btn-primary" id="addProdBtn">أضف</button></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById('closeAddProd').onclick = ()=> modal.remove();
+  document.getElementById('addProdBtn').onclick = ()=>{
+    const pid = document.getElementById('prodSelect').value;
+    const qty = Number(document.getElementById('prodQty').value||1);
+    // find active session or ask to start
+    let s = state.sessions.find(x=> x.roomId===roomId && !x.stoppedAt && !x.endedAt);
+    if(!s){
+      if(confirm('لا توجد جلسة شغالة. هل تريد بدء جلسة الآن؟')){
+        startSession(roomId,0,0,null);
+        s = state.sessions.find(x=> x.roomId===roomId && !x.stoppedAt && !x.endedAt);
+        if(!s) return alert('فشل بدء الجلسة');
+      } else { modal.remove(); return; }
+    }
+    addProductToSession(s.id, pid, qty);
+    modal.remove();
+  };
+}
+
+function sellProductStandalonePrompt(pid){
+  const qty = Number(prompt('ادخل الكمية', '1') || 1);
+  sellProductStandalone(pid, qty);
+}
+
+function openCheckout(roomId){
+  const s = state.sessions.find(x=> x.roomId===roomId && !x.endedAt);
+  if(!s) return alert('لا توجد جلسة لهذه الغرفة');
+  if(!confirm('هل تريد إنهاء الجلسة وتحضير الفاتورة؟')) return;
+  endSession(s.id);
+}
+
+// quick pause/resume
+function quickPauseResume(roomId){
+  const active = state.sessions.find(s=> s.roomId===roomId && !s.stoppedAt && !s.endedAt);
+  if(active){ pauseSession(active.id); return; }
+  const paused = state.sessions.find(s=> s.roomId===roomId && s.stoppedAt && !s.endedAt);
+  if(paused){ resumeSession(paused.id); return; }
+  alert('لا توجد جلسة شغالة أو موقوفة');
+}
+
+// admin helpers
+function addRoomFromAdmin(){
+  const name = document.getElementById('room-name').value || 'Room ' + (state.rooms.length+1);
+  const type = document.getElementById('room-type').value;
+  const sub = document.getElementById('room-sub').value || '';
+  state.rooms.push({ id: `${type}_${Date.now()}`, name, type, sub });
+  document.getElementById('room-name').value = '';
+  save(state); renderAll(); alert('تم إضافة الغرفة');
+}
+function deleteRoom(id){ if(!confirm('حذف الغرفة؟')) return; state.rooms = state.rooms.filter(r=> r.id!==id); state.sessions = state.sessions.filter(s=> s.roomId!==id); save(state); renderAll(); }
+function savePricesFromForm(){
+  state.prices.ps5_hour = Number(document.getElementById('price-ps5').value||state.prices.ps5_hour);
+  state.prices.ps4_hour = Number(document.getElementById('price-ps4').value||state.prices.ps4_hour);
+  state.prices.ps5_match = Number(document.getElementById('price-ps5m').value||state.prices.ps5_match);
+  state.prices.ps4_match = Number(document.getElementById('price-ps4m').value||state.prices.ps4_match);
+  state.prices.billiard_pool = Number(document.getElementById('price-b').value||state.prices.billiard_pool);
+  state.prices.billiard_snooker = Number(document.getElementById('price-s').value||state.prices.billiard_snooker);
+  state.prices.tennis_single = Number(document.getElementById('price-t1').value||state.prices.tennis_single);
+  state.prices.tennis_double = Number(document.getElementById('price-t2').value||state.prices.tennis_double);
+  save(state); alert('تم حفظ الأسعار'); renderAll();
+}
+
+// add product from admin form
+function addProductFromAdmin(){
+  const name = document.getElementById('prod-name')?.value?.trim();
+  const sell = Number(document.getElementById('prod-price')?.value||0);
+  const wholesale = Number(document.getElementById('prod-wholesale')?.value||0);
+  const stock = Number(document.getElementById('prod-stock')?.value||0);
+  if(!name || !sell) return alert('ادخل اسم وسعر البيع');
+  addProduct(name, sell, wholesale, stock);
+  document.getElementById('prod-name').value=''; document.getElementById('prod-price').value=''; document.getElementById('prod-wholesale').value=''; document.getElementById('prod-stock').value='';
   alert('تم إضافة المنتج');
 }
-function deleteProduct(id){
-  if(!confirm('حذف المنتج؟')) return;
-  const arr = load(K_PRODUCTS, []).filter(x=> x.id!==id);
-  save(K_PRODUCTS, arr);
-  renderAdmin(); renderProducts();
+
+// theme switch
+function setTheme(theme){
+  state.theme = theme; save(state); applyTheme();
+  renderAll();
 }
 
-/* ----- render all pages helper ----- */
-function renderAllPages(){
-  renderPlaystation();
-  renderBilliardSnooker();
-  renderTennis();
-  renderGym();
-  renderProducts();
-  renderAdmin();
+// ticker to update timers and rings
+let TICK = null;
+function startTicker(){
+  if(TICK) clearInterval(TICK);
+  TICK = setInterval(()=>{
+    // alarms check not implemented audio optional
+    // update visible timers and rings
+    ['play-rooms','billiard-rooms','tennis-rooms'].forEach(containerId=>{
+      const container = document.getElementById(containerId);
+      if(!container) return;
+      state.rooms.forEach(r=>{
+        const timeEl = document.getElementById('time_'+r.id);
+        if(timeEl){
+          const active = state.sessions.find(s=> s.roomId===r.id && !s.stoppedAt && !s.endedAt);
+          const paused = state.sessions.find(s=> s.roomId===r.id && s.stoppedAt && !s.endedAt);
+          const elapsed = active? ((now()-active.startedAt) + (active.accMs||0)) : (paused? (paused.accMs||0) : 0);
+          timeEl.textContent = active||paused? fmtMs(elapsed) : '00:00:00';
+        }
+        const ring = document.getElementById('ring_'+r.id);
+        if(ring){
+          const circ = Number(ring.getAttribute('data-circ')|| (2*Math.PI*46));
+          // if session has presetMinutes we show progress otherwise full circle
+          const s = state.sessions.find(x=> x.roomId===r.id && !x.stoppedAt && !x.endedAt);
+          if(s && s.presetMinutes){
+            const totalSec = s.presetMinutes * 60;
+            const elapsedSec = ((now()-s.startedAt) + (s.accMs||0))/1000;
+            const ratio = Math.min(1, elapsedSec/totalSec);
+            ring.style.strokeDashoffset = ((1-ratio)*circ).toFixed(2);
+          } else {
+            ring.style.strokeDashoffset = circ;
+          }
+        }
+        const pEl = document.getElementById('price_'+r.id);
+        if(pEl){
+          const sAct = state.sessions.find(s=> s.roomId===r.id && !s.stoppedAt && !s.endedAt);
+          const sPaused = state.sessions.find(s=> s.roomId===r.id && s.stoppedAt && !s.endedAt);
+          const elapsed = sAct? ((now()-sAct.startedAt) + (sAct.accMs||0)) : (sPaused? sPaused.accMs||0 : 0);
+          const mins = Math.ceil(elapsed/60000);
+          pEl.textContent = ((computePricePerHour(r, sAct? sAct.mode : null)/60)*mins).toFixed(2);
+        }
+      });
+    });
+  }, 800);
 }
 
-/* ----- init ----- */
-window.addEventListener('load', ()=>{
-  // إذا تضع صوت منبه، تأكد أن هناك عنصر audio#alarmSound في HTML
-  renderAllPages();
-  startTicker();
-});
-
-/* --- انتهى ملف script.js --- */
+// initial render
+function renderAll(){
+  save(state);
+  applyTheme();
+  renderPlaystationPage(); renderBilliardPage(); renderTennisPage(); renderProductsPage(); renderAdmin(); renderInvoices();
+}
+window.addEventListener('load', ()=>{ renderAll(); startTicker(); });
