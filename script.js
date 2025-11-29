@@ -1,4 +1,4 @@
-/* script.js - كامل: جلسات، ثيمات، منتجات، فواتير، admin - يحفظ في localStorage */
+/* script.js - متكامل: جلسات، ثيمات، منتجات، فواتير، admin - localStorage */
 const STORE_KEY = 'cave_v2_state';
 
 // ====== Default state ======
@@ -52,34 +52,49 @@ function applyTheme(){
 applyTheme();
 
 // ====== Sessions logic ======
-// session object: {id, roomId, startedAt, accMs, stoppedAt(null if running), items:[], presetMinutes:null}
+// session object: {id, roomId, startedAt, accMs, stoppedAt(null if running), items:[], presetMinutes:null, mode }
 function startSession(roomId, presetMinutes=0, startOffsetMin=0, mode=null){
-  // mode optional: 'match','hour','game' - used for pricing semantics
-  // check if running exists for same room
   const running = state.sessions.find(s=> s.roomId===roomId && !s.stoppedAt && !s.endedAt);
   if(running) return alert('يوجد جلسة شغالة لهذه الغرفة بالفعل.');
   const s = { id: uid('S'), roomId, startedAt: now() - (startOffsetMin*60000), accMs:0, stoppedAt:null, endedAt:null, items:[], alarmMs:null, _fired:false, presetMinutes: presetMinutes>0? presetMinutes : null, mode };
   state.sessions.push(s); save(state); renderAll();
 }
+
+function startSessionWithStartTime(roomId, startTimeStr, mode=null){
+  // startTimeStr format "HH:MM"
+  if(!startTimeStr) return startSession(roomId,0,0,mode);
+  const parts = startTimeStr.split(':').map(Number);
+  if(parts.length<2) return startSession(roomId,0,0,mode);
+  const nowDate = new Date();
+  const startDate = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate(), parts[0], parts[1], 0, 0);
+  // If startDate in future assume previous day (entered past midnight)
+  if(startDate.getTime() > nowDate.getTime()){
+    // subtract one day
+    startDate.setDate(startDate.getDate() -1);
+  }
+  const offsetMin = Math.floor((nowDate - startDate)/60000);
+  startSession(roomId, 0, offsetMin, mode);
+}
+
 function pauseSession(sessionId){
   const s = state.sessions.find(x=> x.id===sessionId); if(!s || s.stoppedAt) return;
   s.stoppedAt = now(); s.accMs = (s.accMs||0) + (s.stoppedAt - s.startedAt); save(state); renderAll();
 }
 function resumeSession(sessionId){
-  const s = state.sessions.find(x=> x.id===sessionId); if(!s || !s.stoppedAt || s.endedAt) return;
+  const s = state.sessions.find(x=> x.id===sessionId); if(!s) return;
+  if(!s.stoppedAt) return;
   s.startedAt = now(); s.stoppedAt = null; save(state); renderAll();
 }
 function endSession(sessionId){
   const s = state.sessions.find(x=> x.id===sessionId); if(!s) return;
   if(!s.stoppedAt){ s.stoppedAt = now(); s.accMs = (s.accMs||0) + (s.stoppedAt - s.startedAt); }
   s.endedAt = now();
-  // compute invoice and push
   const room = state.rooms.find(r=> r.id===s.roomId);
   const perHour = computePricePerHour(room, s.mode);
-  const minutes = Math.ceil((s.accMs||0)/60000);
-  const timeCost = (perHour/60)*minutes;
-  const prodCost = (s.items||[]).reduce((a,b)=> a + (b.sellPrice*b.qty),0);
-  const total = Math.round((timeCost + prodCost)*100)/100;
+  const minutes = Math.ceil((s.accMs || 0)/60000);
+  const timeCost = Math.round(((perHour/60)*minutes) * 100)/100;
+  const prodCost = Math.round((s.items||[]).reduce((a,b)=> a + (b.sellPrice*b.qty),0) * 100)/100;
+  const total = Math.round((timeCost + prodCost) * 100)/100;
   const inv = { id: uid('INV'), sessionId: s.id, roomId: s.roomId, t: now(), timeMin: minutes, timeCost, prodCost, total, items: s.items||[] };
   state.invoices.push(inv);
   save(state); renderAll(); showInvoice(inv);
@@ -98,11 +113,11 @@ function computePricePerHour(room, mode){
     return p.ps4_hour || 0;
   }
   if(room.type==='billiard'){
-    if(room.sub==='snooker') return p.billiard_snooker || p.billiard_pool || p.billiard_hour || 0;
+    if(mode==='snooker') return p.billiard_snooker || p.billiard_pool || p.billiard_hour || 0;
     return p.billiard_pool || p.billiard_hour || 0;
   }
   if(room.type==='tennis'){
-    if(room.sub==='double') return p.tennis_double || p.tennis_single || 0;
+    if(mode==='double') return p.tennis_double || p.tennis_single || 0;
     return p.tennis_single || 0;
   }
   return 0;
@@ -119,8 +134,8 @@ function sellProductStandalone(productId, qty=1){
   qty = Number(qty||1);
   if(product.stock !== undefined && product.stock < qty) return alert('المخزون لا يكفي');
   if(product.stock !== undefined) product.stock -= qty;
-  const total = product.sellPrice * qty;
-  const inv = { id: uid('INV'), sessionId:null, roomId:null, t: now(), timeMin:0, timeCost:0, prodCost: total, total, items: [{ id: uid('ITM'), productId:product.id, name:product.name, qty, sellPrice:product.sellPrice }] };
+  const total = Math.round(product.sellPrice * qty * 100)/100;
+  const inv = { id: uid('INV'), sessionId:null, roomId:null, t: now(), timeMin:0, timeCost:0, prodCost: total, total, items:[{ id: uid('ITM'), productId:product.id, name:product.name, qty, sellPrice:product.sellPrice }] };
   state.invoices.push(inv); save(state); renderAll(); showInvoice(inv);
 }
 function addProductToSession(sessionId, productId, qty=1){
@@ -152,14 +167,14 @@ function showInvoice(inv){
       <div style="margin-top:10px">الغرفة: <strong>${inv.roomId||'بيع مستقل'}</strong></div>
       <div>المدة: <strong>${inv.timeMin||0} دقيقة</strong></div>
       <div class="invoice-items">
-        ${(inv.items || []).map(it=>`<div style="display:flex;justify-content:space-between;padding:6px 0">${it.name} x${it.qty} <strong>${(it.sellPrice || it.price || 0) * (it.qty||1)} ج</strong></div>`).join('')}
+        ${(inv.items || []).map(it=>`<div style="display:flex;justify-content:space-between;padding:6px 0">${it.name} x${it.qty} <strong>${((it.sellPrice || it.price || 0) * (it.qty||1)).toFixed(2)} ج</strong></div>`).join('')}
       </div>
       <div class="invoice-footer">
-        <div>تكلفة الوقت: <strong>${inv.timeCost||0} ج</strong></div>
-        <div>تكلفة المنتجات: <strong>${inv.prodCost||0} ج</strong></div>
+        <div>تكلفة الوقت: <strong>${(inv.timeCost||0).toFixed(2)} ج</strong></div>
+        <div>تكلفة المنتجات: <strong>${(inv.prodCost||0).toFixed(2)} ج</strong></div>
       </div>
       <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
-        <div style="font-weight:900;font-size:18px">الإجمالي: ${inv.total} ج</div>
+        <div style="font-weight:900;font-size:18px">الإجمالي: ${(inv.total||0).toFixed(2)} ج</div>
         <div style="display:flex;gap:8px"><button class="btn btn-primary" id="printInv">طباعة</button><button class="btn btn-ghost" id="closeInv2">إغلاق</button></div>
       </div>
     </div>
@@ -280,12 +295,11 @@ function renderCartHtmlForRoom(roomId){
   if(!s) return `<div style="color:#9aa8b3">لا توجد منتجات</div>`;
   const items = s.items||[];
   if(items.length===0) return `<div style="color:#9aa8b3">لا توجد منتجات</div>`;
-  return items.map(it=>`<div class="cart-item"><div>${it.name} x${it.qty} <strong>${(it.sellPrice*it.qty)} ج</strong></div><div><button class="btn btn-ghost btn-small" onclick="removeItemFromSession('${s.id}','${it.id}')">حذف</button></div></div>`).join('');
+  return items.map(it=>`<div class="cart-item"><div>${it.name} x${it.qty} <strong>${(it.sellPrice*it.qty).toFixed(2)} ج</strong></div><div><button class="btn btn-ghost btn-small" onclick="removeItemFromSession('${s.id}','${it.id}')">حذف</button></div></div>`).join('');
 }
 
 // admin render
 function renderAdmin(){
-  // rooms list
   const el = document.getElementById('admin-rooms'); if(el){
     el.innerHTML = '';
     state.rooms.forEach(r=>{
@@ -294,7 +308,6 @@ function renderAdmin(){
       el.appendChild(d);
     });
   }
-  // products admin
   const ap = document.getElementById('admin-products'); if(ap){
     ap.innerHTML = '';
     state.products.forEach(p=>{
@@ -303,7 +316,6 @@ function renderAdmin(){
       ap.appendChild(d);
     });
   }
-  // prices inputs
   if(document.getElementById('price-ps5')) document.getElementById('price-ps5').value = state.prices.ps5_hour;
   if(document.getElementById('price-ps4')) document.getElementById('price-ps4').value = state.prices.ps4_hour;
   if(document.getElementById('price-ps5m')) document.getElementById('price-ps5m').value = state.prices.ps5_match;
@@ -331,74 +343,71 @@ function renderInvoices(){
   el.innerHTML = '';
   state.invoices.slice().reverse().forEach(inv=>{
     const d = document.createElement('div'); d.className='card'; d.style.marginBottom='8px';
-    d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>فاتورة ${inv.id}</strong><div class="small">${new Date(inv.t).toLocaleString()}</div></div><div><strong>${inv.total} ج</strong></div></div><div style="margin-top:8px"><button class="btn btn-ghost" onclick="showInvoice(${JSON.stringify(inv).replace(/"/g,"&quot;")})">عرض/طباعة</button></div>`;
+    d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>فاتورة ${inv.id}</strong><div class="small">${new Date(inv.t).toLocaleString()}</div></div><div><strong>${inv.total} ج</strong></div></div><div style="margin-top:8px"><button class="btn btn-ghost" onclick="showInvoiceFromData('${inv.id}')">عرض/طباعة</button></div>`;
     el.appendChild(d);
   });
 }
 
-// ====== UI dialogs & prompts ======
+function showInvoiceFromData(invId){
+  const inv = state.invoices.find(i=> i.id===invId);
+  if(inv) showInvoice(inv);
+}
+
+// ====== UI dialogs & prompts (with time input behavior B) ======
 function openStartDialog(roomId, pageType){
-  // pageType used to decide available modes
-  // build buttons for available modes based on room type
   const room = state.rooms.find(r=> r.id===roomId);
   if(!room) return alert('غرفة غير موجودة');
-  // create modal
   const modal = document.createElement('div'); modal.className='modal-backdrop';
   // modes options UI depends on type
   let modeButtonsHTML = '';
   if(room.type==='ps5' || room.type==='ps4'){
-    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','match')">مباراة</button>`;
-    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','hour')">ساعة</button>`;
-    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','training')">تدريب</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startWithTime('${roomId}','match')">مباراة</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startWithTime('${roomId}','hour')">ساعة</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startWithTime('${roomId}','training')">تدريب</button>`;
   } else if(room.type==='billiard'){
-    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','pool')">Pool</button>`;
-    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','snooker')">Snooker</button>`;
-    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','hour')">ساعة</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startWithTime('${roomId}','pool')">Pool</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startWithTime('${roomId}','snooker')">Snooker</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startWithTime('${roomId}','hour')">ساعة</button>`;
   } else if(room.type==='tennis'){
-    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','single')">فردي</button>`;
-    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','double')">زوجي</button>`;
-    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','hour')">ساعة</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startWithTime('${roomId}','single')">فردي</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startWithTime('${roomId}','double')">زوجي</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startWithTime('${roomId}','hour')">ساعة</button>`;
   } else {
-    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startMode('${roomId}','hour')">ساعة</button>`;
+    modeButtonsHTML += `<button class="btn btn-primary" onclick="__startWithTime('${roomId}','hour')">ساعة</button>`;
   }
 
   modal.innerHTML = `
     <div class="invoice-modal" style="max-width:520px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><h3>بدء جلسة — ${room.name}</h3><div class="small">اختر الوضع ووقت البدء</div></div>
+        <div><h3>بدء جلسة — ${room.name}</h3><div class="small">اختر الوضع وحدد وقت الدخول (مثل 09:30)</div></div>
         <div><button class="btn btn-ghost" id="closeStart">إلغاء</button></div>
       </div>
       <div style="margin-top:12px" class="form-row">
-        <label class="small">ابدأ من (دقائق قبل الآن):</label>
-        <input id="startOffset" class="input" type="number" placeholder="مثال: 60 = دخلوا من ساعة">
+        <label class="small">وقت الدخول:</label>
+        <input id="startTimeInput" class="input" type="time" placeholder="مثال: 09:30">
       </div>
-      <div style="margin-top:8px" class="controls">${modeButtonsHTML}</div>
-      <div style="margin-top:8px" class="controls"><button class="btn btn-ghost" onclick="document.getElementById('startOffset').value=15">15</button><button class="btn btn-ghost" onclick="document.getElementById('startOffset').value=30">30</button><button class="btn btn-ghost" onclick="document.getElementById('startOffset').value=60">60</button></div>
+      <div style="margin-top:10px" class="small">إذا تركت خانة الوقت فارغة سيبدأ العد من الآن</div>
+      <div style="margin-top:12px" class="controls">${modeButtonsHTML}</div>
+      <div style="margin-top:8px" class="controls"><button class="btn btn-ghost" onclick="document.getElementById('startTimeInput').value='09:00'">09:00</button><button class="btn btn-ghost" onclick="document.getElementById('startTimeInput').value='09:30'">09:30</button><button class="btn btn-ghost" onclick="document.getElementById('startTimeInput').value='10:00'">10:00</button></div>
     </div>
   `;
   document.body.appendChild(modal);
   document.getElementById('closeStart').onclick = ()=> modal.remove();
 
-  // attach helper to window so invoked from inline onclick
-  window.__startMode = function(roomIdArg, chosenMode){
-    const offset = Number(document.getElementById('startOffset').value||0);
-    // map chosenMode to session mode and preset minutes if needed
-    let preset = 0;
-    let mode = null;
-    if(chosenMode==='match'){ mode='match'; preset=0; } 
-    else if(chosenMode==='hour'){ mode='hour'; preset=0; }
-    else if(chosenMode==='training'){ mode='training'; }
-    else if(chosenMode==='pool'){ mode='pool'; }
-    else if(chosenMode==='snooker'){ mode='snooker'; }
-    else if(chosenMode==='single'){ mode='single'; }
-    else if(chosenMode==='double'){ mode='double'; }
-    startSession(roomIdArg, preset, offset, mode);
+  window.__startWithTime = function(roomIdArg, chosenMode){
+    const startTime = document.getElementById('startTimeInput').value;
+    // If empty -> start from now
+    if(!startTime){
+      startSession(roomIdArg, 0, 0, chosenMode);
+    } else {
+      // Use startTime (HH:MM) and apply behavior B
+      startSessionWithStartTime(roomIdArg, startTime, chosenMode);
+    }
     modal.remove();
   };
 }
 
 function openAddProductToRoomPrompt(roomId){
-  // show dropdown of products and qty
   const modal = document.createElement('div'); modal.className='modal-backdrop';
   const productsHtml = state.products.map(p=>`<option value="${p.id}">${p.name} — ${p.sellPrice} ج — مخزون:${p.stock}</option>`).join('');
   modal.innerHTML = `
@@ -416,7 +425,6 @@ function openAddProductToRoomPrompt(roomId){
   document.getElementById('addProdBtn').onclick = ()=>{
     const pid = document.getElementById('prodSelect').value;
     const qty = Number(document.getElementById('prodQty').value||1);
-    // find active session or ask to start
     let s = state.sessions.find(x=> x.roomId===roomId && !x.stoppedAt && !x.endedAt);
     if(!s){
       if(confirm('لا توجد جلسة شغالة. هل تريد بدء جلسة الآن؟')){
@@ -487,8 +495,7 @@ function addProductFromAdmin(){
 
 // theme switch
 function setTheme(theme){
-  state.theme = theme; save(state); applyTheme();
-  renderAll();
+  state.theme = theme; save(state); applyTheme(); renderAll();
 }
 
 // ticker to update timers and rings
@@ -496,8 +503,6 @@ let TICK = null;
 function startTicker(){
   if(TICK) clearInterval(TICK);
   TICK = setInterval(()=>{
-    // alarms check not implemented audio optional
-    // update visible timers and rings
     ['play-rooms','billiard-rooms','tennis-rooms'].forEach(containerId=>{
       const container = document.getElementById(containerId);
       if(!container) return;
@@ -512,7 +517,6 @@ function startTicker(){
         const ring = document.getElementById('ring_'+r.id);
         if(ring){
           const circ = Number(ring.getAttribute('data-circ')|| (2*Math.PI*46));
-          // if session has presetMinutes we show progress otherwise full circle
           const s = state.sessions.find(x=> x.roomId===r.id && !x.stoppedAt && !x.endedAt);
           if(s && s.presetMinutes){
             const totalSec = s.presetMinutes * 60;
