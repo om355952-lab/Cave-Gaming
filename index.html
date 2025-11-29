@@ -1,31 +1,41 @@
-<!-- ======================== index.html ======================== -->
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>الكهف — إدارة المحل</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <header class="topbar">
-    <h1 class="brand-title">الكهف — إدارة المحل</h1>
-    <nav class="nav">
-      <a href="index.html" class="active">الرئيسية</a>
-      <a href="playstation.html">البلايستيشن</a>
-      <a href="billiard.html">البلياردو</a>
-      <a href="tennis.html">التنس</a>
-      <a href="products.html">المنتجات</a>
-      <a href="bills.html">الفواتير</a>
-    </nav>
-  </header>
-  <main class="container">
-    <h2 class="section-title">لوحة التحكم</h2>
-    <div class="stats-grid">
-      <div class="card">الغرف: <span id="stat-rooms">0</span></div>
-      <div class="card">المنتجات: <span id="stat-products">0</span></div>
-      <div class="card">الفواتير: <span id="stat-bills">0</span></div>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الكَهْف — Cave Gaming</title><link rel="stylesheet" href="style.css"></head><body>
+  <nav class="navbar"><ul>
+    <li><a class="active" href="index.html">🏠 الرئيسية</a></li>
+    <li><a href="playstation.html">🎮 بلايستيشن</a></li>
+    <li><a href="billiard-snooker.html">🎱 بلياردو</a></li>
+    <li><a href="tennis.html">🎾 تنس</a></li>
+    <li><a href="products.html">🛒 المنتجات</a></li>
+    <li><a href="admin.html">⚙ الإدارة</a></li>
+  </ul></nav>
+
+  <div class="page-container">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <div class="h-title">أهلاً بك في الكَهْف — Cave Gaming</div>
+        <div class="muted">واجهة إدارية عملية وفخمة لإدارة الجلسات، الفواتير، والتنبيهات.</div>
+        <div style="margin-top:14px"><a class="btn btn-primary" href="playstation.html">فتح لوحة البلايستيشن</a> <a class="btn btn-ghost" href="billiard-snooker.html">طاولات البلياردو</a></div>
+      </div>
+      <div><img src="" alt="logo" style="height:96px;border-radius:12px"></div>
     </div>
-  </main>
-</body>
-    </html> 
+
+    <div class="grid" style="margin-top:18px">
+      <div class="card"><h3>سريع</h3><p class="muted">ابدأ الجلسات من صفحات الألعاب — الأزرار واضحة وسريعة.</p></div>
+      <div class="card"><h3>آمن</h3><p class="muted">كل البيانات محفوظة محليًا — يمكن ترحيلها لاحقًا.</p></div>
+      <div class="card"><h3>مرن</h3><p class="muted">يمكن تعديل الأسعار والغرف من لوحة الإدارة.</p></div>
+    </div>
+
+    <div style="margin-top:18px" class="card">
+      <h3>ثيم الصفحة</h3>
+      <div class="controls">
+        <button class="btn btn-primary" onclick="setTheme('gold')">Black & Gold</button>
+        <button class="btn btn-primary" onclick="setTheme('purple')">Purple</button>
+        <button class="btn btn-primary" onclick="setTheme('neon')">Neon Mix</button>
+      </div>
+      <div class="small" style="margin-top:8px">اختر ثيم يظهر مباشرة على كل الصفحات</div>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body></html>
+
