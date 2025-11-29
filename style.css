@@ -1,72 +1,92 @@
-/* style.css - فخم + عملي (Dark Gold / Neon mix) */
-*{box-sizing:border-box;margin:0;padding:0}
+/* style.css - ثيمات ومكونات عامة */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&display=swap');
+
 :root{
-  --bg:#070708;
-  --panel:linear-gradient(180deg,#0f0f12,#080809);
-  --muted:rgba(255,255,255,0.6);
-  --gold:#d4af37;
-  --neon1:#9b00ff;
-  --neon2:#00d9ff;
+  --bg: #07070a;
+  --panel: linear-gradient(180deg,#0f1116,#071018);
+  --muted: #9fb7b4;
+  --gold-1:#FBD16D;
+  --gold-2:#E0AA3E;
+  --purple-1:#6A00FF;
+  --purple-2:#3A00CC;
+  --neon-1:#00E0FF;
+  --neon-2:#9B00FF;
+  --card: #0f1116;
   --glass: rgba(255,255,255,0.03);
   --radius:12px;
-  --card-shadow: 0 12px 40px rgba(0,0,0,0.6);
-  --font: "Cairo", "Segoe UI", sans-serif;
+  --text:#e8eef7;
 }
+
+/* THEMES */
+body.theme-gold{ --accent1: var(--gold-1); --accent2: var(--gold-2); }
+body.theme-purple{ --accent1: var(--purple-1); --accent2: var(--purple-2); }
+body.theme-neon{ --accent1: var(--neon-1); --accent2: var(--neon-2); }
+
+*{box-sizing:border-box}
 html,body{height:100%}
-body{font-family:var(--font);background:var(--bg);color:#eef;min-height:100vh;padding-top:72px}
+body{
+  margin:0;
+  font-family:'Cairo',sans-serif;
+  background: linear-gradient(180deg,var(--bg),#040405);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+}
 
-/* ===== Top Navbar ===== */
-.navbar{position:fixed;top:0;left:0;right:0;height:72px;background:rgba(6,6,7,0.95);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px);box-shadow:0 6px 20px rgba(0,0,0,0.6)}
-.navbar ul{list-style:none;display:flex;gap:20px}
-.navbar a{color:var(--muted);text-decoration:none;padding:10px 16px;border-radius:10px;font-weight:700;transition:0.18s}
-.navbar a:hover{background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#041018;box-shadow:0 8px 30px rgba(156,0,255,0.08)}
-.navbar a.active{background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#041018}
+/* Navbar */
+.navbar{
+  position:fixed;top:0;left:0;right:0;height:64px;
+  background:rgba(6,6,7,0.95);display:flex;align-items:center;justify-content:center;z-index:1000;border-bottom:1px solid rgba(255,255,255,0.02);
+}
+.navbar ul{list-style:none;display:flex;gap:10px;padding:0;margin:0}
+.navbar a{display:inline-block;padding:8px 12px;color:var(--muted);text-decoration:none;border-radius:8px}
+.navbar a.active, .navbar a:hover{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#041018}
 
-/* ===== Page container ===== */
-.page-container{width:95%;max-width:1200px;margin:20px auto;padding:22px;border-radius:16px;background:var(--panel);border:1px solid rgba(255,255,255,0.03);box-shadow:var(--card-shadow)}
-
-/* header */
-.h-title{font-size:22px;color:var(--gold);font-weight:900;margin-bottom:8px}
-.muted{color:var(--muted);font-size:14px}
+/* container */
+.page-container{width:95%;max-width:1200px;margin:90px auto 40px;padding:18px;border-radius:12px;background:var(--panel);border:1px solid rgba(255,255,255,0.03);box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+.h-title{font-size:22px;color:var(--accent1);font-weight:900}
+.muted{color:var(--muted);font-size:13px;margin-top:6px}
 
 /* grid & cards */
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px}
 .card{background:linear-gradient(180deg,rgba(255,255,255,0.015),transparent);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
+.room{padding:12px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);border:1px solid rgba(255,255,255,0.02);display:flex;flex-direction:column;gap:8px}
 
-/* room card */
-.room{padding:12px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent);border:1px solid rgba(255,255,255,0.02)}
-.room h3{margin-bottom:6px}
-.timer{font-size:18px;font-weight:800;margin:8px 0;color:#fff}
-.price{font-weight:700;color:var(--gold)}
+/* timer circle */
+.timer-wrap{display:flex;gap:12px;align-items:center}
+.timer-svg{width:110px;height:110px;flex:0 0 110px;position:relative}
+.timer-svg svg{transform:rotate(-90deg)}
+.timer-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;font-weight:900}
+.timer-text{font-size:18px}
+.timer-sub{font-size:12px;color:var(--muted)}
+
+/* buttons & controls */
 .controls{display:flex;gap:8px;flex-wrap:wrap}
-
-/* buttons */
 .btn{padding:8px 12px;border-radius:10px;border:none;cursor:pointer;font-weight:800}
-.btn-primary{background:linear-gradient(90deg,var(--gold),#b88a2a);color:#071010}
+.btn-primary{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#041018}
 .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
-.btn-accent{background:linear-gradient(90deg,var(--neon1),var(--neon2));color:#041018}
+.btn-accent{background:transparent;border:2px solid var(--accent1);color:var(--accent1)}
+.btn-small{padding:6px 10px;font-size:13px;border-radius:8px}
 
-/* forms */
-.form-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.input,select{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:#0b0b0b;color:#fff}
+/* product list */
+.product-list .card{display:flex;justify-content:space-between;align-items:center}
 
-/* table */
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:right;color:var(--muted)}
+/* form */
+.form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.input, input, select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text);min-width:120px}
 
-/* timer widget (digital + circle small) */
-.timer-widget{display:flex;gap:14px;align-items:center}
-.timer-circle{position:relative;width:110px;height:110px}
-.timer-circle svg{width:100%;height:100%;transform:rotate(-90deg)}
-.timer-circle circle.bg{fill:none;stroke:rgba(255,255,255,0.03);stroke-width:10}
-.timer-circle circle.progress{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset 0.5s linear}
-.timer-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column}
-.digital{font-weight:900;font-size:18px;color:#fff}
+/* invoice modal */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:2000}
+.invoice-modal{width:94%;max-width:720px;background:linear-gradient(180deg,#07080a,#0b0b0f);border-radius:12px;padding:18px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 20px 60px rgba(0,0,0,0.7)}
+.invoice-header{display:flex;justify-content:space-between;align-items:center}
+.invoice-items{margin-top:12px;border-top:1px dashed rgba(255,255,255,0.03);padding-top:12px}
+.invoice-footer{margin-top:12px;display:flex;justify-content:space-between;align-items:center}
+
+/* small */
 .small{font-size:12px;color:var(--muted)}
 
 /* responsive */
-@media(max-width:900px){
-  .navbar ul{gap:10px;flex-wrap:wrap}
-  .page-container{padding:14px}
-  .timer-circle{width:92px;height:92px}
+@media(max-width:720px){
+  .timer-svg{width:88px;height:88px}
+  .page-container{margin:80px 10px;padding:12px}
+  .navbar ul{gap:6px;flex-wrap:wrap}
 }
