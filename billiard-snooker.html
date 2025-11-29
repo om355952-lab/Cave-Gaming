@@ -1,76 +1,11 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8">
-  <title>🎱 بلياردو / سنوكر — الكهف</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>بلياردو / سنوكر — الكهف</title><link rel="stylesheet" href="style.css"></head><body>
+  <nav class="navbar"><ul><li><a href="index.html">🏠 الرئيسية</a></li><li><a href="playstation.html">🎮 بلايستيشن</a></li><li><a class="active" href="billiard-snooker.html">🎱 بلياردو / سنوكر</a></li><li><a href="tennis.html">🎾 تنس</a></li><li><a href="products.html">🛒 المنتجات</a></li><li><a href="admin.html">⚙ الإدارة</a></li></ul></nav>
 
-<div class="sidebar">
-  <div class="logo">الكَهْف</div>
-  <nav class="navbar">
-    <ul>
-      <li><a href="index.html">🏠 الرئيسية</a></li>
-      <li><a href="playstation.html">🎮 بلايستيشن</a></li>
-      <li><a href="billiard-snooker.html" class="active">🎱 بلياردو / سنوكر</a></li>
-      <li><a href="tennis.html">🎾 تنس</a></li>
-      <li><a href="products.html">🛒 المنتجات</a></li>
-      <li><a href="admin.html">⚙️ الإدارة</a></li>
-    </ul>
-  </nav>
-</div>
-
-<div class="content">
-  <div class="header">
+  <div class="page-container">
     <div class="h-title">🎱 إدارة البلياردو والسنوكر</div>
     <div class="muted">اختر نوع الطاولة وابدأ الجلسة</div>
+    <div id="billiard-rooms" class="room-list" style="margin-top:14px"></div>
   </div>
 
-  <div class="grid">
-
-    <!-- Room 1 -->
-    <div class="card">
-      <h3>Room 1</h3>
-      <select id="type1">
-        <option value="billiard">بلياردو</option>
-        <option value="snooker">سنوكر</option>
-      </select>
-      <p id="timer1">00:00:00</p>
-      <button onclick="startTimer(1)">▶️ ابدأ</button>
-      <button onclick="stopTimer(1)">⏹ أوقف</button>
-      <p class="price">💰 <span id="price1">0</span> جنيه</p>
-    </div>
-
-    <!-- Room 2 -->
-    <div class="card">
-      <h3>Room 2</h3>
-      <select id="type2">
-        <option value="billiard">بلياردو</option>
-        <option value="snooker">سنوكر</option>
-      </select>
-      <p id="timer2">00:00:00</p>
-      <button onclick="startTimer(2)">▶️ ابدأ</button>
-      <button onclick="stopTimer(2)">⏹ أوقف</button>
-      <p class="price">💰 <span id="price2">0</span> جنيه</p>
-    </div>
-
-    <!-- Room 3 -->
-    <div class="card">
-      <h3>Room 3</h3>
-      <select id="type3">
-        <option value="billiard">بلياردو</option>
-        <option value="snooker">سنوكر</option>
-      </select>
-      <p id="timer3">00:00:00</p>
-      <button onclick="startTimer(3)">▶️ ابدأ</button>
-      <button onclick="stopTimer(3)">⏹ أوقف</button>
-      <p class="price">💰 <span id="price3">0</span> جنيه</p>
-    </div>
-
-  </div>
-</div>
-
-<script src="script.js"></script>
-</body>
-</html>
+  <script src="script.js"></script>
+</body></html>
