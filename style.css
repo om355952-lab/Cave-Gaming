@@ -1,48 +1,37 @@
-/* style.css - ثيمات ومكونات عامة */
+/* style.css */
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&display=swap');
 
 :root{
-  --bg: #07070a;
-  --panel: linear-gradient(180deg,#0f1116,#071018);
-  --muted: #9fb7b4;
-  --gold-1:#FBD16D;
-  --gold-2:#E0AA3E;
-  --purple-1:#6A00FF;
-  --purple-2:#3A00CC;
-  --neon-1:#00E0FF;
-  --neon-2:#9B00FF;
-  --card: #0f1116;
-  --glass: rgba(255,255,255,0.03);
+  --bg:#07070a; --panel:linear-gradient(180deg,#0f1116,#071018);
+  --muted:#9fb7b4; --card:#0f1116; --text:#e8eef7;
+  --gold-1:#FBD16D; --gold-2:#E0AA3E;
+  --purple-1:#6A00FF; --purple-2:#3A00CC;
+  --neon-1:#00E0FF; --neon-2:#9B00FF;
   --radius:12px;
-  --text:#e8eef7;
 }
 
-/* THEMES */
-body.theme-gold{ --accent1: var(--gold-1); --accent2: var(--gold-2); }
-body.theme-purple{ --accent1: var(--purple-1); --accent2: var(--purple-2); }
-body.theme-neon{ --accent1: var(--neon-1); --accent2: var(--neon-2); }
+/* theme variables set on body class */
+body.theme-gold{ --accent1:var(--gold-1); --accent2:var(--gold-2); }
+body.theme-purple{ --accent1:var(--purple-1); --accent2:var(--purple-2); }
+body.theme-neon{ --accent1:var(--neon-1); --accent2:var(--neon-2); }
 
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0;
-  font-family:'Cairo',sans-serif;
-  background: linear-gradient(180deg,var(--bg),#040405);
-  color:var(--text);
+  margin:0;font-family:'Cairo',sans-serif;background:linear-gradient(180deg,var(--bg),#040405);color:var(--text);
   -webkit-font-smoothing:antialiased;
 }
 
 /* Navbar */
-.navbar{
-  position:fixed;top:0;left:0;right:0;height:64px;
-  background:rgba(6,6,7,0.95);display:flex;align-items:center;justify-content:center;z-index:1000;border-bottom:1px solid rgba(255,255,255,0.02);
-}
+.navbar{position:fixed;top:0;left:0;right:0;height:64px;background:rgba(6,6,7,0.95);
+  display:flex;align-items:center;justify-content:center;z-index:1000;border-bottom:1px solid rgba(255,255,255,0.02)}
 .navbar ul{list-style:none;display:flex;gap:10px;padding:0;margin:0}
 .navbar a{display:inline-block;padding:8px 12px;color:var(--muted);text-decoration:none;border-radius:8px}
 .navbar a.active, .navbar a:hover{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#041018}
 
 /* container */
-.page-container{width:95%;max-width:1200px;margin:90px auto 40px;padding:18px;border-radius:12px;background:var(--panel);border:1px solid rgba(255,255,255,0.03);box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+.page-container{width:95%;max-width:1200px;margin:90px auto 40px;padding:18px;border-radius:12px;background:var(--panel);
+  border:1px solid rgba(255,255,255,0.03);box-shadow:0 12px 40px rgba(0,0,0,0.6)}
 .h-title{font-size:22px;color:var(--accent1);font-weight:900}
 .muted{color:var(--muted);font-size:13px;margin-top:6px}
 
@@ -67,9 +56,6 @@ body{
 .btn-accent{background:transparent;border:2px solid var(--accent1);color:var(--accent1)}
 .btn-small{padding:6px 10px;font-size:13px;border-radius:8px}
 
-/* product list */
-.product-list .card{display:flex;justify-content:space-between;align-items:center}
-
 /* form */
 .form-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .input, input, select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--text);min-width:120px}
@@ -80,6 +66,10 @@ body{
 .invoice-header{display:flex;justify-content:space-between;align-items:center}
 .invoice-items{margin-top:12px;border-top:1px dashed rgba(255,255,255,0.03);padding-top:12px}
 .invoice-footer{margin-top:12px;display:flex;justify-content:space-between;align-items:center}
+
+/* cart */
+.cart-list{margin-top:8px;border-top:1px dashed rgba(255,255,255,0.03);padding-top:8px}
+.cart-item{display:flex;justify-content:space-between;margin-bottom:6px}
 
 /* small */
 .small{font-size:12px;color:var(--muted)}
