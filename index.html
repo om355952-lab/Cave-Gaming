@@ -1,45 +1,144 @@
-4<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الكَهْف — Cave Gaming</title><link rel="stylesheet" href="style.css"></head><body>
-  <nav class="navbar"><ul>
-    <li><a class="active" href="index.html">🏠 الرئيسية</a></li>
-    <li><a href="playstation.html">🎮 بلايستيشن</a></li>
-    <li><a href="billiard-snooker.html">🎱 بلياردو</a></li>
-    <li><a href="tennis.html">🎾 تنس</a></li>
-    <li><a href="products.html">🛒 المنتجات</a></li>
-    <li><a href="admin.html">⚙ الإدارة</a></li>
-  </ul></nav>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>إدارة الوقت - PlayStation & Games</title>
 
-  <div class="page-container">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-      <div>
-        <div class="h-title">أهلاً بك في الكَهْف — Cave Gaming</div>
-        <div class="muted">واجهة إدارية عملية وفخمة لإدارة الجلسات، الفواتير، والتنبيهات.</div>
-        <div style="margin-top:14px"><a class="btn btn-primary" href="playstation.html">فتح لوحة البلايستيشن</a> <a class="btn btn-ghost" href="billiard-snooker.html">طاولات البلياردو</a></div>
-      </div>
-      <div><img src="" alt="logo" style="height:96px;border-radius:12px"></div>
-    </div>
+<style>
+body{
+    margin:0;
+    background:#0c0e14;
+    color:white;
+    font-family:'Cairo',sans-serif;
+}
+header{
+    background:#11131c;
+    padding:15px;
+    text-align:center;
+    font-size:24px;
+    font-weight:900;
+    color:#00ffc6;
+    border-bottom:2px solid #00ffc6;
+}
+.container{
+    max-width:650px;
+    margin:30px auto;
+    background:#161923;
+    padding:22px;
+    border-radius:16px;
+    box-shadow:0 0 25px rgba(0,0,0,.45);
+}
+label{
+    margin-top:10px;
+    display:block;
+    font-size:17px;
+    font-weight:bold;
+}
+select,input{
+    width:100%;
+    padding:12px;
+    margin-top:6px;
+    border:none;
+    border-radius:10px;
+    background:#1f2433;
+    color:white;
+    font-size:16px;
+}
+button{
+    width:100%;
+    padding:14px;
+    background:#7a00ff;
+    border:none;
+    border-radius:10px;
+    margin-top:18px;
+    color:white;
+    font-size:18px;
+    font-weight:bold;
+    cursor:pointer;
+}
+button:hover{opacity:.85}
+.timer-box{
+    margin-top:22px;
+    background:#10131a;
+    padding:22px;
+    border-radius:14px;
+    text-align:center;
+    font-size:26px;
+    font-weight:900;
+    color:#00ffc6;
+    border:1px solid #00ffc6;
+}
+</style>
 
-    <div class="grid" style="margin-top:18px">
-      <div class="card"><h3>سريع</h3><p class="muted">ابدأ الجلسات من صفحات الألعاب — الأزرار واضحة وسريعة.</p></div>
-      <div class="card"><h3>آمن</h3><p class="muted">كل البيانات محفوظة محليًا — يمكن ترحيلها لاحقًا.</p></div>
-      <div class="card"><h3>مرن</h3><p class="muted">يمكن تعديل الأسعار والغرف من لوحة الإدارة.</p></div>
-    </div>
+</head>
+<body>
 
-    <div style="margin-top:18px" class="card">
-      <h3>ثيم الصفحة</h3>
-      <div class="controls">
-        <button class="btn btn-primary" onclick="setTheme('gold')">Black & Gold</button>
-        <button class="btn btn-primary" onclick="setTheme('purple')">Purple</button>
-        <button class="btn btn-primary" onclick="setTheme('neon')">Neon Mix</button>
-      </div>
-      <div class="small" style="margin-top:8px">اختر ثيم يظهر مباشرة على كل الصفحات</div>
-    </div>
+<header>نظام حساب الوقت</header>
+
+<div class="container">
+
+    <label>نوع الغرفة:</label>
+    <select id="roomType">
+        <option value="PS4">PlayStation 4</option>
+        <option value="PS5">PlayStation 5</option>
+        <option value="billiard">بلياردو</option>
+        <option value="snooker">سنوكر</option>
+        <option value="tennis">تنس طاولة</option>
+    </select>
+
+    <label>وقت دخول العميل (اختياري):</label>
     <input type="time" id="oldTime">
-<button onclick="calcOldTime()">احسب الوقت</button>
 
-<p id="result" style="font-size:20px;font-weight:bold;"></p>
+    <button onclick="startTimer()">ابدأ الحساب</button>
 
-  </div>
+    <div class="timer-box" id="display">لم يبدأ الحساب بعد</div>
 
-  <script src="script.js"></script>
-</body></html>
+</div>
 
+
+<script>
+let startTime;
+let timerLoop;
+
+// بدء الحساب
+function startTimer(){
+    clearInterval(timerLoop);
+
+    let oldValue = document.getElementById("oldTime").value;
+    startTime = new Date();
+
+    // لو دخل وقت سابق
+    if(oldValue){
+        let [h,m] = oldValue.split(":");
+        let past = new Date();
+        past.setHours(h);
+        past.setMinutes(m);
+        past.setSeconds(0);
+
+        // لو الساعة القديمة لسه هتيجي (بعد منتصف الليل)
+        if(past > startTime){
+            past.setDate(past.getDate() - 1);
+        }
+        startTime = past;
+    }
+
+    timerLoop = setInterval(updateTimer,1000);
+    updateTimer();
+}
+
+function updateTimer(){
+    let now = new Date();
+    let diff = now - startTime;
+
+    let sec = Math.floor(diff / 1000);
+    let h = Math.floor(sec / 3600);
+    let m = Math.floor((sec % 3600) / 60);
+    let s = sec % 60;
+
+    document.getElementById("display").innerText =
+        `${h} ساعة : ${m} دقيقة : ${s} ثانية`;
+}
+</script>
+
+</body>
+</html> 
