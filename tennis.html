@@ -1,36 +1,12 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تنس — الكهف</title>
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<nav class="navbar">
-  <ul>
-    <li><a href="index.html">🏠 الرئيسية</a>
-    <li><a href="playstation.html">🎮 بلايستيشن</a>
-    <li><a href="billiard-snooker.html">🎱 بلياردو / سنوكر</a>
-    <li><a class="active" href="tennis.html">🎾 تنس</a>
-    <li><a href="products.html">🛒 المنتجات</a>
-    <li><a href="admin.html">⚙️ الإدارة</a>
-  </ul>
-</nav>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تنس — الكهف</title><link rel="stylesheet" href="style.css"></head><body>
+  <nav class="navbar"><ul><li><a href="index.html">🏠 الرئيسية</a></li><li><a href="playstation.html">🎮 بلايستيشن</a></li><li><a href="billiard-snooker.html">🎱 بلياردو</a></li><li><a class="active" href="tennis.html">🎾 تنس</a></li><li><a href="products.html">🛒 المنتجات</a></li><li><a href="admin.html">⚙ الإدارة</a></li></ul></nav>
 
-<div class="page-container">
-  <div style="display:flex;justify-content:space-between;align-items:center">
-    <div>
-      <div class="h-title">تنس الطاولة</div>
-      <div class="muted">ادارة جلسات التنس — عداد و فاتورة.</div>
-    </div>
-    <div><img src="/mnt/data/08130c3a-70a1-4a3f-bd38-5d1c3b224c51.png" style="height:56px;border-radius:8px"></div>
+  <div class="page-container">
+    <div class="h-title">تنس الطاولة</div>
+    <div class="muted">ادارة جلسات التنس — عداد و فاتورة.</div>
+    <div id="tennis-rooms" class="room-list" style="margin-top:14px"></div>
   </div>
 
-  <div id="tennis-rooms" class="grid" style="margin-top:14px"></div>
-</div>
+  <script src="script.js"></script>
+</body></html>
 
-<audio id="alarmSound" src="alarm.mp3" preload="auto"></audio>
-<script src="script.js"></script>
-</body>
-</html>
